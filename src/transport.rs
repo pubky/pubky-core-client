@@ -1,5 +1,4 @@
-use serde_json::{Result, Value};
-use std::fs::{File};
+use serde_json::{Result, Value}; use std::fs::{File};
 use std::io::{Read, Write};
 
 #[derive(PartialEq)]
@@ -9,20 +8,19 @@ pub struct Transport {}
 impl Transport {
     pub fn get(&self, url: &str) -> Result<Value> {
         let mut file = File::open(url).expect("unable to open a file");
-        let mut content = String::new();
-        file.read_to_string(&mut content).expect("unable to read a file");
+        let content: Value = serde_json::from_reader(&mut file).expect("unable to parse a file");
 
-        Ok(serde_json::from_str(&content).expect("unable to parse a file"))
+        Ok(content)
     }
 
-    pub fn put(&self, url: &str, data: &str, opts: Option<TransportOptions>) -> Result<String> {
+    pub fn put<'a, 'b>(&'a self, url: &'b str, data: Value, opts: Option<TransportOptions>) -> Result<&'b str> {
         if Some(TransportOptions { encrypt: true }) == opts {
             println!("encrypt data is not yet supported");
         }
         let mut file = File::create(url).expect("unable to create a file");
-        file.write_all(data.as_bytes()).expect("unable to write a file");
+        serde_json::to_writer(&mut file, &data).expect("unable to serialize a file");
 
-        Ok(url.to_string())
+        Ok(url)
     }
 
     pub fn del(&self, url: &str) -> Result<()> {
@@ -33,16 +31,15 @@ impl Transport {
     }
 
     // XXX: seem to be quite useless
-    pub fn update(&self, url: &str, data: &str, opts: Option<TransportOptions>) -> Result<String> {
+    pub fn update<'a, 'b>(&'a self, url: &'b str, data: Value, opts: Option<TransportOptions>) -> Result<&'b str> {
         if Some(TransportOptions { encrypt: true }) == opts {
             println!("encrypt data is not yet supported");
         }
 
         let content = self.get(url).expect("unable to get a file");
-        let update = serde_json::from_str(data).expect("unable to parse a file");
-        let merge = Self::merge_json_objects(&content, &update);
+        let merge = Self::merge_json_objects(&content, &data);
 
-        let res = self.put(url, &merge.to_string(), None).expect("unable to store file");
+        let res = self.put(url, merge, None).expect("unable to store file");
 
         Ok(res)
     }
@@ -67,23 +64,24 @@ mod tests {
 
     static TRANSPORT: transport::Transport = Transport {};
     static URL: &str = "/home/rxitech/Projects/Synonym/pdk/fixtures/slashpay.test.json";
-    static CONTENT: &str = "{\"foo\":\"bar\"}";
 
 
     #[test]
     #[should_panic]
     fn it_all_works() {
-        let result = TRANSPORT.put(URL, CONTENT, None) .unwrap();
+        let content: Value = serde_json::json!({"foo": "bar"});
+
+        let result = TRANSPORT.put(URL, content, None) .unwrap();
         assert_eq!(result, URL);
 
         let result = TRANSPORT.get(URL).unwrap();
-        assert_eq!(result, serde_json::from_str::<Value>(&CONTENT).unwrap());
+        assert_eq!(result, serde_json::json!({"foo": "bar"}));
 
-        let result = TRANSPORT.update(URL, "{\"zar\":\"gar\"}", None) .unwrap();
+        let result = TRANSPORT.update(URL, serde_json::json!({"zar":"gar"}), None) .unwrap();
         assert_eq!(result, URL);
 
         let result = TRANSPORT.get(URL).unwrap();
-        assert_eq!(result, serde_json::from_str::<Value>("{\"foo\": \"bar\", \"zar\": \"gar\"}").unwrap());
+        assert_eq!(result, serde_json::json!({"foo": "bar", "zar": "gar"}));
 
         let result = TRANSPORT.del(URL).unwrap();
         assert_eq!(result, ());
