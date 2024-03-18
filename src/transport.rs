@@ -19,7 +19,7 @@ impl Transport {
         Ok(content)
     }
 
-    pub fn put<'a, 'b>(&'a self, url: &'b str, data: Value, opts: Option<TransportOptions>) -> Result<&'b str> {
+    pub fn put<'a, 'b>(&'a self, url: &'b str, data: &Value, opts: Option<TransportOptions>) -> Result<&'b str> {
         Self::is_valid_json(&data);
 
         if Some(TransportOptions { encrypt: true }) == opts {
@@ -42,7 +42,7 @@ impl Transport {
     }
 
     // XXX: seem to be quite useless
-    pub fn update<'a, 'b>(&'a self, url: &'b str, data: Value, opts: Option<TransportOptions>) -> Result<&'b str> {
+    pub fn update<'a, 'b>(&'a self, url: &'b str, data: &Value, opts: Option<TransportOptions>) -> Result<&'b str> {
         Self::is_valid_json(&data);
 
         if Some(TransportOptions { encrypt: true }) == opts {
@@ -52,7 +52,7 @@ impl Transport {
         let content = self.get(url).expect("unable to get a file");
         let merge = Self::merge_json_objects(&content, &data);
 
-        let res = self.put(url, merge, None).expect("unable to store file");
+        let res = self.put(url, &merge, None).expect("unable to store file");
 
         Ok(res)
     }
@@ -124,13 +124,13 @@ mod tests {
         let URL: &str = path_to_file.to_str().unwrap();
         let content: Value = serde_json::json!({"foo": "bar"});
 
-        let result = TRANSPORT.put(URL, content, None).unwrap();
+        let result = TRANSPORT.put(URL, &content, None).unwrap();
         assert_eq!(result, URL);
 
         let result = TRANSPORT.get(URL).unwrap();
         assert_eq!(result, serde_json::json!({"foo": "bar"}));
 
-        let result = TRANSPORT.update(URL, serde_json::json!({"zar":"gar"}), None).unwrap();
+        let result = TRANSPORT.update(URL, &serde_json::json!({"zar":"gar"}), None).unwrap();
         assert_eq!(result, URL);
 
         let result = TRANSPORT.get(URL).unwrap();
