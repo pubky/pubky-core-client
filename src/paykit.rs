@@ -1,9 +1,6 @@
 use crate::transport::Transport;
 use std::collections::HashMap;
 use serde_json::Value;
-use serde::{Serialize, Deserialize};
-use std::fmt;
-use uuid::Uuid;
 
 const INDEX_URL: &str = "slashpay.json";
 
@@ -30,20 +27,32 @@ impl Paykit {
     /// Creates a new public payment endpoint for each plugin in the plugin_map, filling the
     /// content with the plugin data. It stores links to each plugin related file in index file
     /// accessible via `index_url` and returns index url as a result.
-    fn create_all<'a> (&'a self, plugin_map: HashMap <String, Value>, index_url: Option<&'a str>) -> &str {
-        let index_url = Self::get_url(index_url);
+    // fn create_all<'a> (&'a self, plugin_map: HashMap <String, Value>, index_url: Option<&'a str>) -> &str {
+    //     let index_url = Self::get_url(index_url);
+    //
+    //     let mut index = HashMap::new();
+    //     for (name, data) in plugin_map {
+    //         println!("PAYKIT:create_all: name: {:#?}, data: {:#?}", name, data);
+    //         let path = Transport::get_path(&name, Some(index_url), None);
+    //         self.transport.put(&path, data, None).expect("Failed to write plugin data");
+    //         index.insert(name, path);
+    //     }
+    //
+    //     self.transport.put(&index_url, serde_json::json!(&index), None).expect("Failed to write index")
+    // }
 
+    fn create_public_payment_endpoint(&self, pluginName: &str, pluginData: &Value, indexUrl: Option<&str>) -> () {
+        let indexUrl = Self::get_url(indexUrl);
+        let path = Transport::get_path(&pluginName, Some(indexUrl), None);
+        self.transport.put(&path, pluginData, None).expect("Failed to write plugin data");
+
+        // TODO: update index instead of overwriting it
         let mut index = HashMap::new();
-        for (name, data) in plugin_map {
-            let path = Self::get_path(&name, None);
-            self.transport.put(&path, data, None).expect("Failed to write plugin data");
-            index.insert(name, path);
-        }
+        index.insert(pluginName, path);
+        self.transport.put(&indexUrl, &serde_json::json!(&index), None).expect("Failed to write index");
 
-        self.transport.put(&index_url, serde_json::json!(&index), None).expect("Failed to write index")
+        ()
     }
-
-    // createPublicPaymentEndpoint(pluginName: String, pluginData: Value, indexUrl: Option(String)) - return public index url
     //
 
     // updatePulicPaymentEndpoint(pluginName: String, pluginData: Value, indexUrl: Option(Stirng)) - return public index url
@@ -79,31 +88,6 @@ impl Paykit {
         }
     }
 
-    fn get_path(name: &str, id: Option<&String>) -> String {
-        match id {
-            Some(id) => Self::get_path_with_id(name, id),
-            None => Self::get_path_without_id(name)
-        }
-    }
-
-    fn get_path_without_id(name: &str) -> String {
-        format!("/slashpay/{name}/slashpay.json")
-    }
-
-    fn get_path_with_id(name: &str, id: &str) -> String {
-        if !Self::valid_uuid(id) { panic!("Invalid UUID: {id}"); }
-
-        format!("/slashpay/{id}/{name}/slashpay.json")
-    }
-
-    fn valid_uuid(id: &str) -> bool {
-        match Uuid::parse_str(id) {
-            Ok(_) => true,
-            Err(_) => false
-        }
-    }
-
-
 }
 #[cfg(test)]
 mod tests {
@@ -119,45 +103,41 @@ mod tests {
         assert_eq!(Paykit::get_url(url), String::from("slashpay.json"));
     }
 
-    #[test]
-    fn get_path_without_id() {
-        let name = "test";
-        assert_eq!(Paykit::get_path_without_id(name), "/slashpay/test/slashpay.json");
-    }
-
-    #[test]
-    fn valid_uuid() {
-        let id = "f47ac10b-58cc-4372-a567-0e02b2c3d479";
-        assert_eq!(Paykit::valid_uuid(id), true); 
-    }
-
-    #[test]
-    fn invalid_uuid() {
-        let id = "invalid-uuid";
-        assert_eq!(Paykit::valid_uuid(&id), false);
-    }
-
-    #[test]
-    fn get_paht_with_id() {
-        let name = "test";
-        let id = "f47ac10b-58cc-4372-a567-0e02b2c3d479";
-        assert_eq!(Paykit::get_path_with_id(name, id), "/slashpay/f47ac10b-58cc-4372-a567-0e02b2c3d479/test/slashpay.json");
-    }
-
-    #[test]
-    #[should_panic]
-    fn get_path_with_invalid_id() {
-        let name = "test";
-        let id = "invalid-uuid";
-        Paykit::get_path_with_id(name, id);
-    }
-
     // #[test]
     // fn create_all() {
     //     let paykit = Paykit::new();
     //     let mut plugin_map = HashMap::new();
-    //     plugin_map.insert(String::from("test"), serde_json::json!({"test": "test"}));
-    //     let index_url = "/home/rxitech/Projects/Synonym/pdk/fixtures/slashpay.test.json";
+    //     let value = serde_json::json!({
+    //         "pluginA": { "bolt11": "lnbcrt..."},
+    //         "pluginB": { "onchain": "bc1q..."}
+    //     });
+    //     plugin_map.insert(String::from("test"), value);
+    //     let index_url = "/home/rxitech/Projects/Synonym/pdk/fixtures/slashpay.json";
     //     assert_eq!(paykit.create_all(plugin_map, Some(index_url)), index_url);
+    //
+    //     // let read_value = paykit.transport.get(index_url).unwrap();
+    //     // println!("PAYKIT:index_url {:#?}", index_url);
+    //     // println!("PAYKIT:read_value {:#?}", read_value);
+    //
     // }
+
+    #[test]
+    fn create_public_payment_endpoint() {
+        let paykit = Paykit::new();
+        let pluginName: &str = "test";
+        let pluginData = serde_json::json!({ "data": "lnbcrt..." });
+        let index_url: &str = "/home/rxitech/Projects/Synonym/pdk/fixtures/slashpay.json";
+
+        assert_eq!(paykit.create_public_payment_endpoint(pluginName, &pluginData, Some(index_url)), ());
+
+        let file_path = "/home/rxitech/Projects/Synonym/pdk/fixtures/test/slashpay.json";
+
+        let read_index = paykit.transport.get(index_url).unwrap();
+        assert_eq!(read_index, serde_json::json!({"test": file_path}));
+
+        let read_value = paykit.transport.get(file_path).unwrap();
+        assert_eq!(read_value, pluginData);
+
+        // TODO: cleanup
+    }
 }
