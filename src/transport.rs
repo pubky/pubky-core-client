@@ -67,18 +67,6 @@ impl Transport {
         }
     }
 
-    fn merge_json_objects(obj1: &Value, obj2: &Value) -> Value {
-        if let (Value::Object(obj1), Value::Object(obj2)) = (obj1, obj2) {
-            let mut merged = obj1.clone();
-            for (key, value) in obj2 {
-                merged.insert(key.clone(), value.clone());
-            }
-            Value::Object(merged)
-        } else {
-            panic!("Both inputs must be JSON objects");
-        }
-    }
-
     pub fn get_path(name: &str, index_url: Option<&str>, id: Option<&String>) -> String {
         let index_url = match index_url {
             Some(index_url) => index_url,
@@ -93,6 +81,19 @@ impl Transport {
             None => Self::get_path_without_id(p, name)
         }
     }
+
+    fn merge_json_objects(obj1: &Value, obj2: &Value) -> Value {
+        if let (Value::Object(obj1), Value::Object(obj2)) = (obj1, obj2) {
+            let mut merged = obj1.clone();
+            for (key, value) in obj2 {
+                merged.insert(key.clone(), value.clone());
+            }
+            Value::Object(merged)
+        } else {
+            panic!("Both inputs must be JSON objects");
+        }
+    }
+
 
     fn get_path_with_id(p: &Path, name: &str, id: &str) -> String {
         if !Self::valid_uuid(id) { panic!("Invalid UUID: {id}"); }
