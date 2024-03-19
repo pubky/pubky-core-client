@@ -118,28 +118,28 @@ mod tests {
 
     #[test]
     fn walk_through() {
-        let TRANSPORT: transport::Transport = Transport {};
+        let transport: transport::Transport = Transport {};
 
         let path_to_file = Path::new(&env::temp_dir()).join("slashpay.test.json");
-        let URL: &str = path_to_file.to_str().unwrap();
+        let url: &str = path_to_file.to_str().unwrap();
         let content: Value = serde_json::json!({"foo": "bar"});
 
-        let result = TRANSPORT.put(URL, &content, None).unwrap();
-        assert_eq!(result, URL);
+        let result = transport.put(url, &content, None).unwrap();
+        assert_eq!(result, url);
 
-        let result = TRANSPORT.get(URL).unwrap();
+        let result = transport.get(url).unwrap();
         assert_eq!(result, serde_json::json!({"foo": "bar"}));
 
-        let result = TRANSPORT.update(URL, &serde_json::json!({"zar":"gar"}), None).unwrap();
-        assert_eq!(result, URL);
+        let result = transport.update(url, &serde_json::json!({"zar":"gar"}), None).unwrap();
+        assert_eq!(result, url);
 
-        let result = TRANSPORT.get(URL).unwrap();
+        let result = transport.get(url).unwrap();
         assert_eq!(result, serde_json::json!({"foo": "bar", "zar": "gar"}));
 
-        let result = TRANSPORT.del(URL).unwrap();
+        let result = transport.del(url).unwrap();
         assert_eq!(result, ());
 
-        fs::metadata(URL).expect_err("file should not exist");
+        fs::metadata(url).expect_err("file should not exist");
     }
 
     #[test]
