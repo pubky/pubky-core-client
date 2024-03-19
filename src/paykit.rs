@@ -27,19 +27,24 @@ impl Paykit {
     /// Creates a new public payment endpoint for each plugin in the plugin_map, filling the
     /// content with the plugin data. It stores links to each plugin related file in index file
     /// accessible via `index_url` and returns index url as a result.
-    // fn create_all<'a> (&'a self, plugin_map: HashMap <String, Value>, index_url: Option<&'a str>) -> &str {
-    //     let index_url = Self::get_url(index_url);
-    //
-    //     let mut index = HashMap::new();
-    //     for (name, data) in plugin_map {
-    //         println!("PAYKIT:create_all: name: {:#?}, data: {:#?}", name, data);
-    //         let path = Transport::get_path(&name, Some(index_url), None);
-    //         self.transport.put(&path, data, None).expect("Failed to write plugin data");
-    //         index.insert(name, path);
-    //     }
-    //
-    //     self.transport.put(&index_url, serde_json::json!(&index), None).expect("Failed to write index")
-    // }
+    fn create_all(&self, plugin_map: &Value, index_url: Option<&str>) -> Result<String, String> {
+        let index_url = Self::get_url(index_url);
+
+        let mut index = HashMap::new();
+        for (name, data) in plugin_map.as_object().unwrap() {
+            println!("PAYKIT:create_all: name: {:#?}, data: {:#?}", name, data);
+            let path = Transport::get_path(&name, Some(index_url), None);
+            let _ = match self.transport.put(&path, data, None) {
+                Ok(_) => index.insert(name, path),
+                Err(e) => return Err(format!("Failed to write plugin data: {e}"))
+            };
+        }
+
+        return match self.transport.put(&index_url, &serde_json::json!(&index), None) {
+            Ok(_) => Ok(index_url.to_string()),
+            Err(e) => Err(format!("Failed to write index: {e}"))
+        }
+    }
 
     fn create_public_payment_endpoint(&self, plugin_name: &str, plugin_data: &Value, index_url: Option<&str>) -> Result<String, String> {
         let index_url = Self::get_url(index_url);
@@ -47,6 +52,7 @@ impl Paykit {
         self.transport.put(&path, plugin_data, None).expect("Failed to write plugin data");
 
         let mut index = HashMap::new();
+        // TODO: insert top level key for extensibility
         index.insert(plugin_name, &path);
         return match self.transport.update(&index_url, &serde_json::json!(&index), None) {
             Ok(_) => Ok(path),
@@ -110,23 +116,30 @@ mod tests {
         assert_eq!(Paykit::get_url(url), String::from("slashpay.json"));
     }
 
-    // #[test]
-    // fn create_all() {
-    //     let paykit = Paykit::new();
-    //     let mut plugin_map = HashMap::new();
-    //     let value = serde_json::json!({
-    //         "pluginA": { "bolt11": "lnbcrt..."},
-    //         "pluginB": { "onchain": "bc1q..."}
-    //     });
-    //     plugin_map.insert(String::from("test"), value);
-    //     let index_url = "/home/rxitech/Projects/Synonym/pdk/fixtures/slashpay.json";
-    //     assert_eq!(paykit.create_all(plugin_map, Some(index_url)), index_url);
-    //
-    //     // let read_value = paykit.transport.get(index_url).unwrap();
-    //     // println!("PAYKIT:index_url {:#?}", index_url);
-    //     // println!("PAYKIT:read_value {:#?}", read_value);
-    //
-    // }
+    #[test]
+    fn create_all() {
+        let paykit = Paykit::new();
+        let pluginA_name = "pluginA";
+        let pluginB_name = "pluginB";
+        // TODO: add some top level key for extensibility
+        let value = serde_json::json!({
+            pluginA_name: { "bolt11": "lnbcrt..."},
+            pluginB_name: { "onchain": "bc1q..."}
+        });
+        let index_url = Path::new(&env::temp_dir()).join("slashpay.json");
+        let index_url: &str = index_url.to_str().unwrap();
+        assert_eq!(paykit.create_all(&value, Some(index_url)), Ok(index_url.to_string()));
+
+        let fileA_path = Path::new(&env::temp_dir()).join(pluginA_name).join("slashpay.json");
+        let fileA_path = fileA_path.to_str().unwrap();
+        let fileB_path = Path::new(&env::temp_dir()).join(pluginB_name).join("slashpay.json");
+        let fileB_path: &str = fileB_path.to_str().unwrap();
+
+        assert_eq!(paykit.transport.get(index_url), Ok(serde_json::json!({ pluginA_name: fileA_path, pluginB_name: fileB_path})));
+        assert_eq!(paykit.transport.get(fileA_path), Ok(serde_json::json!({ "bolt11": "lnbcrt..."})));
+        assert_eq!(paykit.transport.get(fileB_path), Ok(serde_json::json!({ "onchain": "bc1q..."})));
+        // TODO: remove files
+    }
 
     #[test]
     fn create_public_payment_endpoint() {
