@@ -46,10 +46,9 @@ impl Paykit {
         let path = Transport::get_path(&plugin_name, Some(index_url), None);
         self.transport.put(&path, plugin_data, None).expect("Failed to write plugin data");
 
-        // TODO: update index instead of overwriting it
         let mut index = HashMap::new();
         index.insert(plugin_name, path);
-        self.transport.put(&index_url, &serde_json::json!(&index), None).expect("Failed to write index");
+        self.transport.update(&index_url, &serde_json::json!(&index), None).expect("Failed to write index");
 
         ()
     }
