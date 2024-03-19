@@ -138,7 +138,10 @@ mod tests {
         assert_eq!(paykit.transport.get(index_url), Ok(serde_json::json!({ pluginA_name: fileA_path, pluginB_name: fileB_path})));
         assert_eq!(paykit.transport.get(fileA_path), Ok(serde_json::json!({ "bolt11": "lnbcrt..."})));
         assert_eq!(paykit.transport.get(fileB_path), Ok(serde_json::json!({ "onchain": "bc1q..."})));
-        // TODO: remove files
+
+        std::fs::remove_file(index_url).unwrap();
+        std::fs::remove_file(fileA_path).unwrap();
+        std::fs::remove_file(fileB_path).unwrap();
     }
 
     #[test]
