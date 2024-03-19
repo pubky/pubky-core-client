@@ -119,35 +119,37 @@ mod tests {
     #[test]
     fn create_all() {
         let paykit = Paykit::new();
-        let pluginA_name = "pluginA";
-        let pluginB_name = "pluginB";
+        let plugin_a_name = "pluginA";
+        let plugin_b_name = "pluginB";
         // TODO: add some top level key for extensibility
         let value = serde_json::json!({
-            pluginA_name: { "bolt11": "lnbcrt..."},
-            pluginB_name: { "onchain": "bc1q..."}
+            plugin_a_name: { "bolt11": "lnbcrt..."},
+            plugin_b_name: { "onchain": "bc1q..."}
         });
-        let index_url = Path::new(&env::temp_dir()).join("slashpay.json");
+        let test_folder = Path::new(&env::temp_dir()).join("pdk_test").join("paykit").join("create_all");
+        let index_url = test_folder.join("slashpay.json");
         let index_url: &str = index_url.to_str().unwrap();
         assert_eq!(paykit.create_all(&value, Some(index_url)), Ok(index_url.to_string()));
 
-        let fileA_path = Path::new(&env::temp_dir()).join(pluginA_name).join("slashpay.json");
-        let fileA_path = fileA_path.to_str().unwrap();
-        let fileB_path = Path::new(&env::temp_dir()).join(pluginB_name).join("slashpay.json");
-        let fileB_path: &str = fileB_path.to_str().unwrap();
+        let file_a_path = test_folder.join(plugin_a_name).join("slashpay.json");
+        let file_a_path = file_a_path.to_str().unwrap();
+        let file_b_path = test_folder.join(plugin_b_name).join("slashpay.json");
+        let file_b_path: &str = file_b_path.to_str().unwrap();
 
-        assert_eq!(paykit.transport.get(index_url), Ok(serde_json::json!({ pluginA_name: fileA_path, pluginB_name: fileB_path})));
-        assert_eq!(paykit.transport.get(fileA_path), Ok(serde_json::json!({ "bolt11": "lnbcrt..."})));
-        assert_eq!(paykit.transport.get(fileB_path), Ok(serde_json::json!({ "onchain": "bc1q..."})));
+        assert_eq!(paykit.transport.get(index_url), Ok(serde_json::json!({ plugin_a_name: file_a_path, plugin_b_name: file_b_path})));
+        assert_eq!(paykit.transport.get(file_a_path), Ok(serde_json::json!({ "bolt11": "lnbcrt..."})));
+        assert_eq!(paykit.transport.get(file_b_path), Ok(serde_json::json!({ "onchain": "bc1q..."})));
 
         std::fs::remove_file(index_url).unwrap();
-        std::fs::remove_file(fileA_path).unwrap();
-        std::fs::remove_file(fileB_path).unwrap();
+        std::fs::remove_file(file_a_path).unwrap();
+        std::fs::remove_file(file_b_path).unwrap();
     }
 
     #[test]
     fn create_public_payment_endpoint() {
         let paykit = Paykit::new();
-        let index_url = Path::new(&env::temp_dir()).join("slashpay.json");
+        let test_folder = Path::new(&env::temp_dir()).join("pdk_test").join("paykit").join("create_public_payment_endpoint");
+        let index_url = test_folder.join("slashpay.json");
         let index_url: &str = index_url.to_str().unwrap();
 
         let plugin1_name: &str = "test1";
@@ -155,11 +157,11 @@ mod tests {
 
         assert_eq!(
             paykit.create_public_payment_endpoint(plugin1_name, &plugin1_data, Some(index_url)),
-            Ok(Path::new(&env::temp_dir()).join(plugin1_name).join("slashpay.json").to_str().unwrap().to_string())
+            Ok(test_folder.join(plugin1_name).join("slashpay.json").to_str().unwrap().to_string())
         );
 
         let read_index = paykit.transport.get(index_url).unwrap();
-        let file1_path = Path::new(&env::temp_dir()).join("test1").join("slashpay.json");
+        let file1_path = test_folder.join("test1").join("slashpay.json");
         let file1_path: &str = file1_path.to_str().unwrap();
         let read_value = paykit.transport.get(file1_path).unwrap();
 
@@ -170,10 +172,10 @@ mod tests {
         let plugin2_data = serde_json::json!({ "data": "lnbcrt..." });
         assert_eq!(
             paykit.create_public_payment_endpoint(plugin2_name, &plugin2_data, Some(index_url)),
-            Ok(Path::new(&env::temp_dir()).join(plugin2_name).join("slashpay.json").to_str().unwrap().to_string())
+            Ok(test_folder.join(plugin2_name).join("slashpay.json").to_str().unwrap().to_string())
         );
 
-        let file2_path = Path::new(&env::temp_dir()).join("test2").join("slashpay.json");
+        let file2_path = test_folder.join("test2").join("slashpay.json");
         let file2_path: &str = file2_path.to_str().unwrap();
         let read_index = paykit.transport.get(index_url).unwrap();
         let read_value = paykit.transport.get(file2_path).unwrap();

@@ -14,7 +14,10 @@ impl Transport {
     pub fn get(&self, url: &str) -> Result<Value, String> {
         match File::open(url) {
             Ok(mut file) => {
-                let content: Value = serde_json::from_reader(&mut file).expect("unable to parse a file");
+                let content: Value = match serde_json::from_reader(&mut file) {
+                    Ok(content) => content,
+                    Err(e) =>  panic!("unable to parse a file: {} at {}", e, url)
+                };
                 Self::is_valid_json(&content);
                 Ok(content)
             },
@@ -43,7 +46,6 @@ impl Transport {
             Err(e) => Err(format!("unable to open a file: {e}"))
         };
 
-        File::open(url).expect("unable to open a file");
         match fs::remove_file(url) {
             Ok(_) => Ok(()),
             Err(e) => Err(format!("unable to remove a file: {e}"))
@@ -131,7 +133,8 @@ mod tests {
     fn walk_through() {
         let transport: transport::Transport = Transport {};
 
-        let path_to_file = Path::new(&env::temp_dir()).join("slashpay.test.json");
+        let test_folder = Path::new(&env::temp_dir()).join("pdk_test").join("transport").join("walk_through");
+        let path_to_file = test_folder.join("slashpay.test.json");
         let url: &str = path_to_file.to_str().unwrap();
         let content: Value = serde_json::json!({"foo": "bar"});
 
@@ -156,10 +159,11 @@ mod tests {
     #[test]
     fn get_path_without_id() {
         let name = "test";
-        let p = Path::new(&env::temp_dir()).join("slashpay.json");
+        let test_folder = Path::new(&env::temp_dir()).join("pdk_test").join("transport").join("walk_through");
+        let p = test_folder.join("slashpay.json");
         assert_eq!(
             Transport::get_path_without_id(&p, name),
-            Path::new(&env::temp_dir()).join("test").join("slashpay.json").to_str().unwrap().to_string()
+            test_folder.join("test").join("slashpay.json").to_str().unwrap().to_string()
         );
     }
 
@@ -167,10 +171,11 @@ mod tests {
     fn get_path_with_id() {
         let name = "test";
         let id = "f47ac10b-58cc-4372-a567-0e02b2c3d479";
-        let p = Path::new(&env::temp_dir()).join("slashpay.json");
+        let test_folder = Path::new(&env::temp_dir()).join("pdk_test").join("transport").join("walk_through");
+        let p = test_folder.join("slashpay.json");
         assert_eq!(
             Transport::get_path_with_id(&p, name, id),
-            Path::new(&env::temp_dir()).join(id).join(name).join("slashpay.json").to_str().unwrap().to_string()
+            test_folder.join(id).join(name).join("slashpay.json").to_str().unwrap().to_string()
         );
     }
 
@@ -179,7 +184,8 @@ mod tests {
     fn get_path_with_invalid_id() {
         let name = "test";
         let id = "invalid-uuid";
-        let p = Path::new(&env::temp_dir()).join("slashpay.json");
+        let test_folder = Path::new(&env::temp_dir()).join("pdk_test").join("transport").join("walk_through");
+        let p = test_folder.join("slashpay.json");
         Transport::get_path_with_id(&p, name, id);
     }
 
