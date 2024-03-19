@@ -1,5 +1,6 @@
 use uuid::Uuid;
-use serde_json::{Result, Value};
+use serde_json::Value;
+use std::result::Result;
 use std::fs::{File, self};
 use std::path::Path;
 
@@ -10,16 +11,18 @@ pub struct TransportOptions { encrypt: bool }
 
 pub struct Transport {}
 impl Transport {
-    pub fn get(&self, url: &str) -> Result<Value> {
-        let mut file = File::open(url).expect("unable to open a file");
-        let content: Value = serde_json::from_reader(&mut file).expect("unable to parse a file");
-
-        Self::is_valid_json(&content);
-
-        Ok(content)
+    pub fn get(&self, url: &str) -> Result<Value, String> {
+        match File::open(url) {
+            Ok(mut file) => {
+                let content: Value = serde_json::from_reader(&mut file).expect("unable to parse a file");
+                Self::is_valid_json(&content);
+                Ok(content)
+            },
+            Err(e) => Err(format!("unable to open a file: {}", e))
+        }
     }
 
-    pub fn put<'a, 'b>(&'a self, url: &'b str, data: &Value, opts: Option<TransportOptions>) -> Result<&'b str> {
+    pub fn put<'a, 'b>(&'a self, url: &'b str, data: &Value, opts: Option<TransportOptions>) -> Result<&'b str, String> {
         Self::is_valid_json(&data);
 
         if Some(TransportOptions { encrypt: true }) == opts {
@@ -34,27 +37,34 @@ impl Transport {
         Ok(url)
     }
 
-    pub fn del(&self, url: &str) -> Result<()> {
-        File::open(url).expect("unable to open a file");
-        std::fs::remove_file(url).expect("unable to remove a file");
+    pub fn del(&self, url: &str) -> Result<(), String> {
+        let _ = match File::open(url) {
+            Ok(_) => Ok(()),
+            Err(e) => Err(format!("unable to open a file: {e}"))
+        };
 
-        Ok(())
+        File::open(url).expect("unable to open a file");
+        match fs::remove_file(url) {
+            Ok(_) => Ok(()),
+            Err(e) => Err(format!("unable to remove a file: {e}"))
+        }
     }
 
-    // XXX: seem to be quite useless
-    pub fn update<'a, 'b>(&'a self, url: &'b str, data: &Value, opts: Option<TransportOptions>) -> Result<&'b str> {
+    pub fn update<'a, 'b>(&'a self, url: &'b str, data: &Value, opts: Option<TransportOptions>) -> Result<&'b str, String> {
         Self::is_valid_json(&data);
 
         if Some(TransportOptions { encrypt: true }) == opts {
             println!("encrypted data is not yet supported");
         }
 
-        let content = self.get(url).expect("unable to get a file");
-        let merge = Self::merge_json_objects(&content, &data);
-
-        let res = self.put(url, &merge, None).expect("unable to store file");
-
-        Ok(res)
+        match self.get(url) {
+            Ok(content) => {
+                let merge = Self::merge_json_objects(&content, &data);
+                let res = self.put(url, &merge, None).expect("unable to store file");
+                Ok(res)
+            },
+            Err(e) => Err(format!("unable to get a file: {e}"))
+        }
     }
 
     fn merge_json_objects(obj1: &Value, obj2: &Value) -> Value {
