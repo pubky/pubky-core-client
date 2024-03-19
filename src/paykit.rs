@@ -17,12 +17,10 @@ impl Paykit {
     pub fn new() -> Paykit {
         Paykit { transport: Transport {} }
     }
-    /* RECEIVER PERSPECTIVE: */
+    /* ------ RECEIVER PERSPECTIVE: ------ */
     // NOTE: index file is always auto updated
 
     /* PUBLIC PAYMENT ENDPOINT */
-    // For each name as a key in first hashmap argument, create a new file with location derived
-    // based on the name and content as json object of value. Store links to these files in index_url
 
     /// Creates a new public payment endpoint for each plugin in the plugin_map, filling the
     /// content with the plugin data. It stores links to each plugin related file in index file
@@ -30,22 +28,19 @@ impl Paykit {
     fn create_all(&self, plugin_map: &Value, index_url: Option<&str>) -> Result<String, String> {
         let index_url = Self::get_url(index_url);
 
-        let mut index = HashMap::new();
         for (name, data) in plugin_map.as_object().unwrap() {
-            println!("PAYKIT:create_all: name: {:#?}, data: {:#?}", name, data);
-            let path = Transport::get_path(&name, Some(index_url), None);
-            let _ = match self.transport.put(&path, data, None) {
-                Ok(_) => index.insert(name, path),
-                Err(e) => return Err(format!("Failed to write plugin data: {e}"))
+            match Self::create_public_payment_endpoint(&self, name, data, Some(index_url)) {
+                Ok(_) => (),
+                Err(e) => return Err(e)
             };
-        }
+        };
 
-        return match self.transport.put(&index_url, &serde_json::json!(&index), None) {
-            Ok(_) => Ok(index_url.to_string()),
-            Err(e) => Err(format!("Failed to write index: {e}"))
-        }
+        Ok(index_url.to_string())
     }
 
+    /// Creates a new public payment endpoint for a plugin with the given `plugin_name` and fills
+    /// the content with the `plugin_data`. It stores the link to the plugin related file in index
+    /// file accessible via `index_url` and returns the path to the plugin related file as a result.
     fn create_public_payment_endpoint(&self, plugin_name: &str, plugin_data: &Value, index_url: Option<&str>) -> Result<String, String> {
         let index_url = Self::get_url(index_url);
         let path = Transport::get_path(&plugin_name, Some(index_url), None);
@@ -54,10 +49,11 @@ impl Paykit {
         let mut index = HashMap::new();
         // TODO: insert top level key for extensibility
         index.insert(plugin_name, &path);
-        return match self.transport.update(&index_url, &serde_json::json!(&index), None) {
+
+        match self.transport.update(&index_url, &serde_json::json!(&index), None) {
             Ok(_) => Ok(path),
             Err(_) => {
-                return match self.transport.put(&index_url, &serde_json::json!(&index), None) {
+                match self.transport.put(&index_url, &serde_json::json!(&index), None) {
                     Ok(_) => Ok(path),
                     Err(e) => Err(format!("Failed to write index: {e}"))
                 }

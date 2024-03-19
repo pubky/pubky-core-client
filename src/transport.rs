@@ -16,7 +16,7 @@ impl Transport {
             Ok(mut file) => {
                 let content: Value = match serde_json::from_reader(&mut file) {
                     Ok(content) => content,
-                    Err(e) =>  panic!("unable to parse a file: {} at {}", e, url)
+                    Err(e) => return Err(format!("unable to parse a file: {} at {}", e, url))
                 };
                 Self::is_valid_json(&content);
                 Ok(content)
@@ -41,11 +41,6 @@ impl Transport {
     }
 
     pub fn del(&self, url: &str) -> Result<(), String> {
-        let _ = match File::open(url) {
-            Ok(_) => Ok(()),
-            Err(e) => Err(format!("unable to open a file: {e}"))
-        };
-
         match fs::remove_file(url) {
             Ok(_) => Ok(()),
             Err(e) => Err(format!("unable to remove a file: {e}"))
