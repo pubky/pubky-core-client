@@ -6,7 +6,7 @@ const INDEX_URL: &str = "slashpay.json";
 
 struct Paykit {
     transport: Transport
-    // indexUrl: String
+    // index_url: String
 }
 
 // struct PluginData {}
@@ -41,24 +41,24 @@ impl Paykit {
     //     self.transport.put(&index_url, serde_json::json!(&index), None).expect("Failed to write index")
     // }
 
-    fn create_public_payment_endpoint(&self, pluginName: &str, pluginData: &Value, indexUrl: Option<&str>) -> () {
-        let indexUrl = Self::get_url(indexUrl);
-        let path = Transport::get_path(&pluginName, Some(indexUrl), None);
-        self.transport.put(&path, pluginData, None).expect("Failed to write plugin data");
+    fn create_public_payment_endpoint(&self, plugin_name: &str, plugin_data: &Value, index_url: Option<&str>) -> () {
+        let index_url = Self::get_url(index_url);
+        let path = Transport::get_path(&plugin_name, Some(index_url), None);
+        self.transport.put(&path, plugin_data, None).expect("Failed to write plugin data");
 
         // TODO: update index instead of overwriting it
         let mut index = HashMap::new();
-        index.insert(pluginName, path);
-        self.transport.put(&indexUrl, &serde_json::json!(&index), None).expect("Failed to write index");
+        index.insert(plugin_name, path);
+        self.transport.put(&index_url, &serde_json::json!(&index), None).expect("Failed to write index");
 
         ()
     }
     //
 
-    // updatePulicPaymentEndpoint(pluginName: String, pluginData: Value, indexUrl: Option(Stirng)) - return public index url
+    // updatePulicPaymentEndpoint(plugin_name: String, plugin_data: Value, index_url: Option(Stirng)) - return public index url
     //
 
-    // deletePublicPaymentEndpoint(pluginName: String, indexUrl: Option(String)) - return private index url
+    // deletePublicPaymentEndpoint(plugin_name: String, index_url: Option(String)) - return private index url
     //
   
     /* PRIVATE PAYMENT ENDPOINT */
@@ -67,18 +67,18 @@ impl Paykit {
     // createAllPrivate (PluginMap: HashMap<String, PluginData>, amount: u8) - return public index url
     //
 
-    // createPrivatePaymentEndpoint(id: String, pluginName: String, pluginData: Value, amount: u8) - return private index url
+    // createPrivatePaymentEndpoint(id: String, plugin_name: String, plugin_data: Value, amount: u8) - return private index url
     //
 
-    // updatePrivatePaymentEndpoint(id: String, pluginName: String, pluginData: Value, amount: u8) - return private index url
+    // updatePrivatePaymentEndpoint(id: String, plugin_name: String, plugin_data: Value, amount: u8) - return private index url
     //
 
-    // deletePrivatePaymentEndpoint(id: String, pluginName: String) - return private index url
+    // deletePrivatePaymentEndpoint(id: String, plugin_name: String) - return private index url
     //
   
     /* SENDER PERSPECTIVE: */
     /* PUBLIC AND PRIVATE PAYMENT ENDPOINT */
-    // readAll(indexUrl: Option(String)) - return {plugin name, plugin data}
+    // readAll(index_url: Option(String)) - return {plugin name, plugin data}
     //
 
     fn get_url(url: Option<&str>) -> &str {
@@ -91,6 +91,10 @@ impl Paykit {
 }
 #[cfg(test)]
 mod tests {
+    use std::env;
+    use std::path::Path;
+    use std::collections::HashMap;
+    use serde_json::Value;
     use super::*;
 
     #[test]
@@ -124,19 +128,22 @@ mod tests {
     #[test]
     fn create_public_payment_endpoint() {
         let paykit = Paykit::new();
-        let pluginName: &str = "test";
-        let pluginData = serde_json::json!({ "data": "lnbcrt..." });
-        let index_url: &str = "/home/rxitech/Projects/Synonym/pdk/fixtures/slashpay.json";
+        let plugin_name: &str = "test";
+        let plugin_data = serde_json::json!({ "data": "lnbcrt..." });
+        let index_url = Path::new(&env::temp_dir()).join("slashpay.json");
+        let index_url: &str = index_url.to_str().unwrap();
 
-        assert_eq!(paykit.create_public_payment_endpoint(pluginName, &pluginData, Some(index_url)), ());
+        assert_eq!(paykit.create_public_payment_endpoint(plugin_name, &plugin_data, Some(index_url)), ());
 
-        let file_path = "/home/rxitech/Projects/Synonym/pdk/fixtures/test/slashpay.json";
+        let file_path = Path::new(&env::temp_dir()).join("test").join("slashpay.json");
+        let file_path: &str = file_path.to_str().unwrap();
 
         let read_index = paykit.transport.get(index_url).unwrap();
         assert_eq!(read_index, serde_json::json!({"test": file_path}));
 
         let read_value = paykit.transport.get(file_path).unwrap();
-        assert_eq!(read_value, pluginData);
+        assert_eq!(read_value, plugin_data);
+        println!("PAYKIT:read_value {:#?}", read_value);
 
         // TODO: cleanup
     }
