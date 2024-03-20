@@ -114,25 +114,41 @@ impl Paykit {
     /// Read index file by url and return its content as a result.
     pub fn read_index(&self, index_url: Option<&str>) -> Result<Value, String> {
         let index_url = Self::get_url(index_url);
+
         self.transport.get(index_url)
     }
 
-    /// Read one
+    /// Read payment endpoint file by url and return its content as a result.
+    pub fn read_payment_endpoint(&self, path: &str) -> Result<Value, String> {
+        self.transport.get(path)
+    }
 
-    /// Read all
-    // pub fn read_all(&self, index_url: Option(String)) -> Result<Value, String> {
-    //     let index_url = Self::get_url(index_url);
-    //     self.transport.get(&index_url);
-    //
-    //
-    //     let mut result: HashMap<String, Value> = HashMap::new();
-    //     for (name, path) in index.as_object().unwrap() {
-    //         let data = self.transport.get(&path);
-    //
-    //
-    //         println!("{}: {}", name, data);
-    //     }
-    // }
+    /// Read payment endpoint by name and return its content as a result.
+    pub fn read_payment_endpoint_by_name(&self, plugin_name: &str, index_url: Option<&str>) -> Result<Value, String> {
+        let index_url = Self::get_url(index_url);
+        let path = Transport::get_path(&plugin_name, Some(index_url), None);
+
+        self.transport.get(&path)
+    }
+
+    /// Read all payment endpoints by index url and return their content as a result.
+    pub fn read_all(&self, index_url: Option<&str>) -> Result<Value, String> {
+        let index_url = Self::get_url(index_url);
+        let index = match self.transport.get(&index_url) {
+            Ok(index) => index,
+            Err(e) => return Err(format!("Failed to read index: {e}"))
+        };
+
+        let mut result: HashMap<String, Value> = HashMap::new();
+        for (name, path) in index.as_object().unwrap() {
+            match self.transport.get(path.as_str().unwrap()) {
+                Ok(data) => result.insert(name.to_string(), data),
+                Err(e) => return Err(format!("Failed to read plugin data: {e}"))
+            };
+        };
+
+        Ok(serde_json::json!(result))
+    }
     
 
     fn get_url(url: Option<&str>) -> &str {
@@ -329,7 +345,6 @@ mod tests {
             Ok(test_folder.join("slashpay.json").to_str().unwrap().to_string())
         );
 
-
         let read_index = paykit.read_index(Some(index_url)).unwrap();
         let file1_path = test_folder.join(plugin1_name).join("slashpay.json");
         let file1_path: &str = file1_path.to_str().unwrap();
@@ -338,5 +353,78 @@ mod tests {
 
         std::fs::remove_file(index_url).unwrap();
         std::fs::remove_file(file1_path).unwrap();
+    }
+
+    #[test]
+    fn read_payment_endpoint() {
+        let paykit = Paykit::new();
+        let test_folder = Path::new(&env::temp_dir()).join("pdk_test").join("paykit").join("read_payment_endpoint");
+        let index_url = test_folder.join("slashpay.json");
+        let index_url: &str = index_url.to_str().unwrap();
+
+        let plugin1_name: &str = "test1";
+        let plugin1_data = serde_json::json!({ "data": "lnbcrt...1" });
+
+        assert_eq!(
+            paykit.create_public_payment_endpoint(plugin1_name, &plugin1_data, Some(index_url)),
+            Ok(test_folder.join(plugin1_name).join("slashpay.json").to_str().unwrap().to_string())
+        );
+
+        let file1_path = test_folder.join(plugin1_name).join("slashpay.json");
+        let file1_path: &str = file1_path.to_str().unwrap();
+
+        let read_value = paykit.read_payment_endpoint(file1_path).unwrap();
+        assert_eq!(read_value, plugin1_data);
+
+        std::fs::remove_file(index_url).unwrap();
+        std::fs::remove_file(file1_path).unwrap();
+    }
+
+    #[test]
+    fn read_payment_endpoint_by_name() {
+        let paykit = Paykit::new();
+        let test_folder = Path::new(&env::temp_dir()).join("pdk_test").join("paykit").join("read_payment_endpoint_by_name");
+        let index_url = test_folder.join("slashpay.json");
+        let index_url: &str = index_url.to_str().unwrap();
+
+        let plugin1_name: &str = "test1";
+        let plugin1_data = serde_json::json!({ "data": "lnbcrt...1" });
+
+        assert_eq!(
+            paykit.create_public_payment_endpoint(plugin1_name, &plugin1_data, Some(index_url)),
+            Ok(test_folder.join(plugin1_name).join("slashpay.json").to_str().unwrap().to_string())
+        );
+
+        let read_value = paykit.read_payment_endpoint_by_name(plugin1_name, Some(index_url)).unwrap();
+        assert_eq!(read_value, plugin1_data);
+
+        std::fs::remove_file(index_url).unwrap();
+        std::fs::remove_file(test_folder.join(plugin1_name).join("slashpay.json")).unwrap();
+    }
+
+    #[test]
+    fn read_all() {
+        let paykit = Paykit::new();
+        let test_folder = Path::new(&env::temp_dir()).join("pdk_test").join("paykit").join("read_all");
+        let index_url = test_folder.join("slashpay.json");
+        let index_url: &str = index_url.to_str().unwrap();
+
+        let plugin1_name: &str = "test1";
+        let plugin1_data = serde_json::json!({ "data": "lnbcrt...1" });
+        let plugin2_name: &str = "test2";
+        let plugin2_data = serde_json::json!({ "data": "lnbcrt...2" });
+        let data = serde_json::json!({plugin1_name: plugin1_data, plugin2_name: plugin2_data});
+
+        assert_eq!(
+            paykit.create_all(&data, Some(index_url)),
+            Ok(test_folder.join("slashpay.json").to_str().unwrap().to_string())
+        );
+
+        let read_value = paykit.read_all(Some(index_url)).unwrap();
+        assert_eq!(read_value, data);
+
+        std::fs::remove_file(index_url).unwrap();
+        std::fs::remove_file(test_folder.join(plugin1_name).join("slashpay.json")).unwrap();
+        std::fs::remove_file(test_folder.join(plugin2_name).join("slashpay.json")).unwrap();
     }
 }
