@@ -25,7 +25,7 @@ impl Paykit {
     /// Creates a new public payment endpoint for each plugin in the plugin_map, filling the
     /// content with the plugin data. It stores links to each plugin related file in index file
     /// accessible via `index_url` and returns index url as a result.
-    fn create_all(&self, plugin_map: &Value, index_url: Option<&str>) -> Result<String, String> {
+    pub fn create_all(&self, plugin_map: &Value, index_url: Option<&str>) -> Result<String, String> {
         let index_url = Self::get_url(index_url);
 
         for (name, data) in plugin_map.as_object().unwrap() {
@@ -41,7 +41,7 @@ impl Paykit {
     /// Creates a new public payment endpoint for a plugin with the given `plugin_name` and fills
     /// the content with the `plugin_data`. It stores the link to the plugin related file in index
     /// file accessible via `index_url` and returns the path to the plugin related file as a result.
-    fn create_public_payment_endpoint(&self, plugin_name: &str, plugin_data: &Value, index_url: Option<&str>) -> Result<String, String> {
+    pub fn create_public_payment_endpoint(&self, plugin_name: &str, plugin_data: &Value, index_url: Option<&str>) -> Result<String, String> {
         let index_url = Self::get_url(index_url);
         let path = Transport::get_path(&plugin_name, Some(index_url), None);
         self.transport.put(&path, plugin_data, None).expect("Failed to write plugin data");
@@ -61,40 +61,50 @@ impl Paykit {
         }
     }
 
-// updatePulicPaymentEndpoint(plugin_name: String, plugin_data: Value, index_url: Option(Stirng)) - return public index url
-//
+    /// Updates a public payment endpoint for a plugin with the given `plugin_name` and fills the content with the `plugin_data`.
+    /// It stores the link to the plugin related file in index file accessible via `index_url` and returns the path to the plugin related file as a result.
+    pub fn update_pulic_payment_endpoint(&self, plugin_name: &str, plugin_data: &Value, index_url: Option<&str>) -> Result<String, String> {
+        let index_url = Self::get_url(index_url);
+        let path = Transport::get_path(&plugin_name, Some(index_url), None);
 
-// deletePublicPaymentEndpoint(plugin_name: String, index_url: Option(String)) - return private index url
-//
+        match self.transport.put(&path, plugin_data, None) {
+            Ok(_) => Ok(index_url.to_string()),
+            Err(e) => return Err(format!("Failed to write plugin data: {e}"))
+        }
+    }
 
-/* PRIVATE PAYMENT ENDPOINT */
-// NOTE: url for index file is always autoderived based on id
 
-// createAllPrivate (PluginMap: HashMap<String, PluginData>, amount: u8) - return public index url
-//
+    // pub delete_public_payment_endpoint(plugin_name: String, index_url: Option(String)) - return private index url
+    //
 
-// createPrivatePaymentEndpoint(id: String, plugin_name: String, plugin_data: Value, amount: u8) - return private index url
-//
+    /* PRIVATE PAYMENT ENDPOINT */
+    // NOTE: url for index file is always autoderived based on id
 
-// updatePrivatePaymentEndpoint(id: String, plugin_name: String, plugin_data: Value, amount: u8) - return private index url
-//
+    // pub create_all_private (PluginMap: HashMap<String, PluginData>, amount: u8) - return public index url
+    //
 
-// deletePrivatePaymentEndpoint(id: String, plugin_name: String) - return private index url
-//
+    // pub create_private_payment_endpoint(id: String, plugin_name: String, plugin_data: Value, amount: u8) - return private index url
+    //
 
-/* SENDER PERSPECTIVE: */
-/* PUBLIC AND PRIVATE PAYMENT ENDPOINT */
-// readAll(index_url: Option(String)) - return {plugin name, plugin data}
-//
+    // pub update_private_payment_endpoint(id: String, plugin_name: String, plugin_data: Value, amount: u8) - return private index url
+    //
 
-fn get_url(url: Option<&str>) -> &str {
-    match url {
-        Some(url) => url,
-        None => INDEX_URL
+    // pub delete_private_payment_endpoint(id: String, plugin_name: String) - return private index url
+    //
+
+    /* SENDER PERSPECTIVE: */
+    /* PUBLIC AND PRIVATE PAYMENT ENDPOINT */
+    // readAll(index_url: Option(String)) - return {plugin name, plugin data}
+    //
+
+    fn get_url(url: Option<&str>) -> &str {
+        match url {
+            Some(url) => url,
+            None => INDEX_URL
+        }
     }
 }
 
-}
 #[cfg(test)]
 mod tests {
     use std::env;
@@ -182,5 +192,44 @@ mod tests {
         std::fs::remove_file(index_url).unwrap();
         std::fs::remove_file(file1_path).unwrap();
         std::fs::remove_file(file2_path).unwrap();
+    }
+
+    #[test]
+    fn update_pulic_payment_endpoint() {
+        let paykit = Paykit::new();
+        let test_folder = Path::new(&env::temp_dir()).join("pdk_test").join("paykit").join("update_pulic_payment_endpoint");
+        let index_url = test_folder.join("slashpay.json");
+        let index_url: &str = index_url.to_str().unwrap();
+
+        let plugin1_name: &str = "test1";
+        let plugin1_data = serde_json::json!({ "data": "lnbcrt..." });
+
+        assert_eq!(
+            paykit.create_public_payment_endpoint(plugin1_name, &plugin1_data, Some(index_url)),
+            Ok(test_folder.join(plugin1_name).join("slashpay.json").to_str().unwrap().to_string())
+        );
+
+        let read_index = paykit.transport.get(index_url).unwrap();
+        let file1_path = test_folder.join("test1").join("slashpay.json");
+        let file1_path: &str = file1_path.to_str().unwrap();
+        let read_value = paykit.transport.get(file1_path).unwrap();
+
+        assert_eq!(read_index, serde_json::json!({"test1": file1_path}));
+        assert_eq!(read_value, plugin1_data);
+
+        let plugin1_data = serde_json::json!({ "data": "lnbcrt...updated" });
+        assert_eq!(
+            paykit.update_pulic_payment_endpoint(plugin1_name, &plugin1_data, Some(index_url)),
+            Ok(test_folder.join("slashpay.json").to_str().unwrap().to_string())
+        );
+
+        let read_index = paykit.transport.get(index_url).unwrap();
+        let read_value = paykit.transport.get(file1_path).unwrap();
+
+        assert_eq!(read_index, serde_json::json!({"test1": file1_path}));
+        assert_eq!(read_value, plugin1_data);
+
+        std::fs::remove_file(index_url).unwrap();
+        std::fs::remove_file(file1_path).unwrap();
     }
 }
