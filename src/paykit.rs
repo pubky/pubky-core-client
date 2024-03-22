@@ -1,11 +1,11 @@
-use crate::transport::Transport;
+use crate::transport_fs::TransportFs;
 use std::collections::HashMap;
 use serde_json::Value;
 
 const INDEX_URL: &str = "slashpay.json";
 
 struct Paykit {
-    transport: Transport
+    transport: TransportFs
     // index_url: String
 }
 
@@ -15,7 +15,7 @@ struct Paykit {
 
 impl Paykit {
     pub fn new() -> Paykit {
-        Paykit { transport: Transport {} }
+        Paykit { transport: TransportFs {} }
     }
     /* ------ RECEIVER PERSPECTIVE: ------ */
     // NOTE: index file is always auto updated
@@ -43,7 +43,7 @@ impl Paykit {
     /// file accessible via `index_url` and returns the path to the plugin related file as a result.
     pub fn create_public_payment_endpoint(&self, plugin_name: &str, plugin_data: &Value, index_url: Option<&str>) -> Result<String, String> {
         let index_url = Self::get_url(index_url);
-        let path = Transport::get_path(&plugin_name, Some(index_url), None);
+        let path = TransportFs::get_path(&plugin_name, Some(index_url), None);
         self.transport.put(&path, plugin_data, None).expect("Failed to write plugin data");
 
         let mut index = HashMap::new();
@@ -65,7 +65,7 @@ impl Paykit {
     /// It stores the link to the plugin related file in index file accessible via `index_url` and returns the path to the plugin related file as a result.
     pub fn update_pulic_payment_endpoint(&self, plugin_name: &str, plugin_data: &Value, index_url: Option<&str>) -> Result<String, String> {
         let index_url = Self::get_url(index_url);
-        let path = Transport::get_path(&plugin_name, Some(index_url), None);
+        let path = TransportFs::get_path(&plugin_name, Some(index_url), None);
 
         match self.transport.put(&path, plugin_data, None) {
             Ok(_) => Ok(index_url.to_string()),
@@ -78,7 +78,7 @@ impl Paykit {
     /// Returns the path to the plugin related file as a result.
     pub fn delete_public_payment_endpoint(&self, plugin_name: &str, index_url: Option<&str>) -> Result<String, String> {
         let index_url = Self::get_url(index_url);
-        let path = Transport::get_path(&plugin_name, Some(index_url), None);
+        let path = TransportFs::get_path(&plugin_name, Some(index_url), None);
 
         match self.transport.del(&path) {
             Ok(_) => (),
@@ -126,7 +126,7 @@ impl Paykit {
     /// Read payment endpoint by name and return its content as a result.
     pub fn read_payment_endpoint_by_name(&self, plugin_name: &str, index_url: Option<&str>) -> Result<Value, String> {
         let index_url = Self::get_url(index_url);
-        let path = Transport::get_path(&plugin_name, Some(index_url), None);
+        let path = TransportFs::get_path(&plugin_name, Some(index_url), None);
 
         self.transport.get(&path)
     }

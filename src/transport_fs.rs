@@ -9,8 +9,8 @@ const INDEX_URL: &str = "slashpay.json";
 #[derive(PartialEq)]
 pub struct TransportOptions { encrypt: bool }
 
-pub struct Transport {}
-impl Transport {
+pub struct TransportFs {}
+impl TransportFs {
     pub fn get(&self, url: &str) -> Result<Value, String> {
         match File::open(url) {
             Ok(mut file) => {
@@ -121,12 +121,12 @@ impl Transport {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::transport;
+    use crate::transport_fs::TransportFs;
     use std::env;
 
     #[test]
     fn walk_through() {
-        let transport: transport::Transport = Transport {};
+        let transport: TransportFs = TransportFs {};
 
         let test_folder = Path::new(&env::temp_dir()).join("pdk_test").join("transport").join("walk_through");
         let path_to_file = test_folder.join("slashpay.test.json");
@@ -157,7 +157,7 @@ mod tests {
         let test_folder = Path::new(&env::temp_dir()).join("pdk_test").join("transport").join("walk_through");
         let p = test_folder.join("slashpay.json");
         assert_eq!(
-            Transport::get_path_without_id(&p, name),
+            TransportFs::get_path_without_id(&p, name),
             test_folder.join("test").join("slashpay.json").to_str().unwrap().to_string()
         );
     }
@@ -169,7 +169,7 @@ mod tests {
         let test_folder = Path::new(&env::temp_dir()).join("pdk_test").join("transport").join("walk_through");
         let p = test_folder.join("slashpay.json");
         assert_eq!(
-            Transport::get_path_with_id(&p, name, id),
+            TransportFs::get_path_with_id(&p, name, id),
             test_folder.join(id).join(name).join("slashpay.json").to_str().unwrap().to_string()
         );
     }
@@ -181,31 +181,31 @@ mod tests {
         let id = "invalid-uuid";
         let test_folder = Path::new(&env::temp_dir()).join("pdk_test").join("transport").join("walk_through");
         let p = test_folder.join("slashpay.json");
-        Transport::get_path_with_id(&p, name, id);
+        TransportFs::get_path_with_id(&p, name, id);
     }
 
     #[test]
     fn valid_uuid() {
         let id = "f47ac10b-58cc-4372-a567-0e02b2c3d479";
-        assert_eq!(Transport::valid_uuid(id), true); 
+        assert_eq!(TransportFs::valid_uuid(id), true); 
     }
 
     #[test]
     fn invalid_uuid() {
         let id = "invalid-uuid";
-        assert_eq!(Transport::valid_uuid(&id), false);
+        assert_eq!(TransportFs::valid_uuid(&id), false);
     }
 
     #[test]
     fn is_valid_json() {
         let content: Value = serde_json::json!({"foo": "bar"});
-        assert_eq!(Transport::is_valid_json(&content), ());
+        assert_eq!(TransportFs::is_valid_json(&content), ());
     }
 
     #[test]
     #[should_panic]
     fn is_invalid_json() {
         let content: Value = serde_json::json!(["foo", "bar"]);
-        Transport::is_valid_json(&content);
+        TransportFs::is_valid_json(&content);
     }
 }
