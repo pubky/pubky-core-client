@@ -9,6 +9,6 @@ edition = "2021"
 serde = { version = "1.0.197", features = ["derive"] }
 serde_json = "1.0.114"
 uuid = "1.7.0"
-pkarr = "1.1.2"
+pkarr = { version = "1.1.2", features = ["dht", "relay"]}
 reqwest = "0.12.2"
 z32 = "1.1.1"
