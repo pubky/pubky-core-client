@@ -9,7 +9,6 @@ pub struct Resolver<'a> {
     // - read around
     // - read ahead
     // - read behind (current implementation)
-
     cache: HashMap<String, Url>,
 }
 
@@ -21,24 +20,22 @@ impl Resolver<'_> {
         }
     }
     /// Resolves home server url using relay (with name '_pubky')
-    // TODO: add option to skip cache
     pub fn resolve_homeserver(
         &mut self,
         public_key: PublicKey,
         relay_url: Option<&Url>,
     ) -> Result<&Url, String> {
         if self.cache.contains_key(&public_key.to_string()) {
-            return Ok(self.cache.get(&public_key.to_string()).expect(
-                "Failed to get value from cache"
-            ));
+            return Ok(self
+                .cache
+                .get(&public_key.to_string())
+                .expect("Failed to get value from cache"));
         }
 
         let packet = match self.lookup(&public_key, relay_url) {
             Err(e) => return Err(e),
             Ok(key) => key,
         };
-
-        // TODO: move into  lookup
         let records = packet.resource_records("_pubky");
 
         for record in records {
@@ -58,11 +55,12 @@ impl Resolver<'_> {
                             ) {
                                 Err(e) => return Err(e),
                                 Ok(url) => {
-                                    &self.cache.insert(public_key.to_string(), url.clone());
+                                    let _ = &self.cache.insert(public_key.to_string(), url.clone());
 
-                                    return Ok(self.cache.get(&public_key.to_string()).expect(
-                                        "Failed to get value from cache"
-                                    ));
+                                    return Ok(self
+                                        .cache
+                                        .get(&public_key.to_string())
+                                        .expect("Failed to get value from cache"));
                                 }
                             },
                         }
