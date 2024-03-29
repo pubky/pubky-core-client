@@ -13,8 +13,9 @@ pub fn lookup<'a>(public_key: PublicKey, relay_url: Option<&'a Url>) -> Result<S
         Some(entry) => Ok(entry)
     }
 }
-// /// Resolves home server url using relay (with name '_pubky')
-// pub fn resolve_homeserver(public_key: &str, relay_url: Option<&Url>) -> Result<&str, Strign> {
+
+/// Resolves home server url using relay (with name '_pubky')
+// pub fn resolve_homeserver(public_key: &str, relay_url: Option<&Url>) -> Result<Url, Strign> {
 //     let key = match lookup(public_key, "_pubky", relay_url) {
 //         Err(e) => return Err(e),
 //         Ok(key) => key
@@ -28,7 +29,7 @@ pub fn lookup<'a>(public_key: PublicKey, relay_url: Option<&'a Url>) -> Result<S
 //         }
 //     }
 // }
-//
+
 /// Resolves home server url using relay (with name '@')
 pub fn resolve_homeserver_url(public_key: PublicKey, relay_url: Option<&Url>) -> Result<Url, String> {
     let packet = match lookup(public_key, relay_url) {
@@ -36,14 +37,24 @@ pub fn resolve_homeserver_url(public_key: PublicKey, relay_url: Option<&Url>) ->
         Ok(key) => key
     };
 
-    let records = packet.resource_records("_foo");
+    let records = packet.resource_records("@");
 
     for record in records {
         match &record.rdata {
-            // FIXME: formatting/concatenation is broken here.
-            // corresponding ResouceRecords have method `to_string` but their trait bound are not satisfied
-            dns::rdata::RData::CNAME(cname) => return Ok(Url::parse(format!("https://{:?}", cname).as_str()).unwrap()),
-            dns::rdata::RData::TXT(txt) => return Ok(Url::parse(format!("http://{:?}", txt).as_str()).unwrap()),
+            dns::rdata::RData::CNAME(cname) => {
+                // See https://docs.rs/simple-dns/latest/simple_dns/rdata/struct.CNAME.html#fields
+                return Ok(Url::parse(format!("https://{}", cname.0.to_string()).as_str()).unwrap())
+            },
+            dns::rdata::RData::TXT(txt) => {
+                // See https://docs.rs/simple-dns/latest/simple_dns/rdata/struct.TXT.html#method.attributes
+                for (k, v) in txt.attributes() {
+                    if !k.starts_with("localhost") { continue; }
+                    match v {
+                        Some(v) => return Ok(Url::parse(format!("http://{k}{v}").as_str()).unwrap()),
+                        None => return Ok(Url::parse(format!("http://{k}").as_str()).unwrap())
+                    }
+                }
+            },
             _ => continue,
         }
     }
