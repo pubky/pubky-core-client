@@ -15,20 +15,41 @@ pub fn lookup<'a>(public_key: PublicKey, relay_url: Option<&'a Url>) -> Result<S
 }
 
 /// Resolves home server url using relay (with name '_pubky')
-// pub fn resolve_homeserver(public_key: &str, relay_url: Option<&Url>) -> Result<Url, Strign> {
-//     let key = match lookup(public_key, "_pubky", relay_url) {
-//         Err(e) => return Err(e),
-//         Ok(key) => key
-//     };
-//
-//     match resolve_homeserver_url(key) {
-//         Err(e) => return Err(e),
-//         Ok(url) => {
-//             // set to cache
-//             Ok(url)
-//         }
-//     }
-// }
+pub fn resolve_homeserver(public_key: PublicKey, relay_url: Option<&Url>) -> Result<Url, String> {
+    // TODO: check cache and return if found
+
+    let packet = match lookup(public_key, relay_url) {
+        Err(e) => return Err(e),
+        Ok(key) => key
+    };
+
+    let records = packet.resource_records("_pubky");
+    for record in records {
+        match &record.rdata {
+            dns::rdata::RData::TXT(txt) => {
+                // See https://docs.rs/simple-dns/latest/simple_dns/rdata/struct.TXT.html#method.attributes
+                for (k, v) in txt.attributes() {
+                    if !k.starts_with("home") { continue; }
+
+                    // TODO: make sure that `attributes` returned correct values
+                    match v {
+                        None => return Err("No value found".to_string()),
+                        Some(v) => match resolve_homeserver_url(v.as_str().try_into().expect("failed key"), relay_url) {
+                            Err(e) => return Err(e),
+                            Ok(url) => {
+                                // TODO: set to cache
+                                return Ok(url)
+                            }
+                        }
+                    }
+                }
+            },
+            _ => continue,
+        }
+    }
+
+    Err("No records found".to_string())
+}
 
 /// Resolves home server url using relay (with name '@')
 pub fn resolve_homeserver_url(public_key: PublicKey, relay_url: Option<&Url>) -> Result<Url, String> {
@@ -59,6 +80,5 @@ pub fn resolve_homeserver_url(public_key: PublicKey, relay_url: Option<&Url>) ->
         }
     }
 
-    return Err("No records found".to_string());
+    Err("No records found".to_string())
 }
-//
