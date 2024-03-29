@@ -136,3 +136,40 @@ impl Resolver<'_> {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use pkarr::{dns, Keypair, PkarrClient, SignedPacket};
+
+    #[test]
+    fn test_resolve_homeserver_from_dht() {
+        let key = Keypair::random();
+        let client = PkarrClient::new();
+
+        let mut packet = dns::Packet::new_reply(0);
+        let home = format!("home={}", key.public_key());
+        let home = home.as_str();
+
+        packet.answers.push(dns::ResourceRecord::new(
+            dns::Name::new("_pubky").unwrap(),
+            dns::CLASS::IN,
+            30,
+            dns::rdata::RData::TXT(home.try_into().unwrap()),
+        ));
+        packet.answers.push(dns::ResourceRecord::new(
+            dns::Name::new("@").unwrap(),
+            dns::CLASS::IN,
+            30,
+            dns::rdata::RData::CNAME(dns::Name::new("example.com").unwrap().into()),
+        ));
+
+        let signed_packet = SignedPacket::from_packet(&key, &packet).unwrap();
+        client.publish(&signed_packet).unwrap();
+
+        let mut resolver = Resolver::new(Option::<&Url>::None);
+        let res = resolver.resolve_homeserver(key.public_key(), Option::<&Url>::None);
+
+        assert_eq!(res.unwrap().to_string(), "https://example.com/".to_string());
+    }
+}
