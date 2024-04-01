@@ -22,7 +22,7 @@ impl Resolver<'_> {
     /// Resolves home server url using relay (with name '_pubky')
     pub fn resolve_homeserver(
         &mut self,
-        public_key: PublicKey,
+        public_key: &PublicKey,
         relay_url: Option<&Url>,
     ) -> Result<&Url, String> {
         if self.cache.contains_key(&public_key.to_string()) {
@@ -32,7 +32,7 @@ impl Resolver<'_> {
                 .expect("Failed to get value from cache"));
         }
 
-        let packet = match self.lookup(&public_key, relay_url) {
+        let packet = match self.lookup(public_key, relay_url) {
             Err(e) => return Err(e),
             Ok(key) => key,
         };
@@ -50,16 +50,17 @@ impl Resolver<'_> {
                         match v {
                             None => return Err("No value found".to_string()),
                             Some(v) => match self.resolve_homeserver_url(
-                                v.as_str().try_into().expect("failed key"),
+                                &v.as_str().try_into().unwrap(),
                                 relay_url,
                             ) {
                                 Err(e) => return Err(e),
                                 Ok(url) => {
-                                    let _ = &self.cache.insert(public_key.to_string(), url.clone());
+                                    let key = public_key.to_string().clone();
+                                    let _ = &self.cache.insert(key.clone(), url.clone());
 
                                     return Ok(self
                                         .cache
-                                        .get(&public_key.to_string())
+                                        .get(&key)
                                         .expect("Failed to get value from cache"));
                                 }
                             },
@@ -76,10 +77,10 @@ impl Resolver<'_> {
     /// Resolves home server url using relay (with name '@')
     fn resolve_homeserver_url(
         &self,
-        public_key: PublicKey,
+        public_key: &PublicKey,
         relay_url: Option<&Url>,
     ) -> Result<Url, String> {
-        let packet = match self.lookup(&public_key, relay_url) {
+        let packet = match self.lookup(public_key, relay_url) {
             Err(e) => return Err(e),
             Ok(key) => key,
         };
@@ -148,7 +149,7 @@ mod tests {
         let client = PkarrClient::new();
 
         let mut packet = dns::Packet::new_reply(0);
-        let home = format!("home={}", key.public_key());
+        let home = format!("home={}", &key.public_key());
         let home = home.as_str();
 
         packet.answers.push(dns::ResourceRecord::new(
@@ -168,7 +169,7 @@ mod tests {
         client.publish(&signed_packet).unwrap();
 
         let mut resolver = Resolver::new(Option::<&Url>::None);
-        let res = resolver.resolve_homeserver(key.public_key(), Option::<&Url>::None);
+        let res = resolver.resolve_homeserver(&key.public_key(), Option::<&Url>::None);
 
         assert_eq!(res.unwrap().to_string(), "https://example.com/".to_string());
     }
