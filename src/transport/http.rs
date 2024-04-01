@@ -1,9 +1,9 @@
-use std::collections::HashMap;
-use reqwest::Url;
 use reqwest::blocking::Client;
 use reqwest::header::HeaderMap;
-use reqwest::Method;
 use reqwest::Body;
+use reqwest::Method;
+use reqwest::Url;
+use std::collections::HashMap;
 
 /// Get challenge, sign it and authenticate
 // pub fn send_user_root_signature(&self, sig_type: &str, keypair: &str) -> Result<&str, Error> {}
@@ -11,14 +11,18 @@ use reqwest::Body;
 /// Get challenge
 // pub fn get_challenge(&self) -> Result<&str, Error> {}
 
-
-
 // Have a hashmap homeserverUrl -> sessionId
 // Q: how to clean it? -> delete manually
 //
 // IMO it is better for client to handle resolving and for http to handle sessions
 // HomeserverUrl + path vs path (including homeserverUrl)
-pub fn request(method: Method, path: Url, sessionId: &mut Option<String>, headers: Option<&HeaderMap>, body: Option<String>) -> Result<String, String> {
+pub fn request(
+    method: Method,
+    path: Url,
+    sessionId: &mut Option<String>,
+    headers: Option<&HeaderMap>,
+    body: Option<String>,
+) -> Result<String, String> {
     let client = Client::new();
     let mut request_builder = client.request(method, path);
 
@@ -42,7 +46,7 @@ pub fn request(method: Method, path: Url, sessionId: &mut Option<String>, header
                 *sessionId = Some(s_id.value().to_string());
             }
             Ok(res.text().unwrap())
-        },
-        Err(err) => Err(format!("Error: {:?}", err))
+        }
+        Err(err) => Err(format!("Error: {:?}", err)),
     }
 }
