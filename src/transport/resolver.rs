@@ -94,8 +94,6 @@ impl Resolver<'_> {
             dns::rdata::RData::TXT(home.try_into().unwrap()),
         ));
 
-        println!("Homeserver url: {}", homeserver_url);
-        println!("DNS: {}", dns::Name::new(homeserver_url.as_str()).unwrap());
         packet.answers.push(dns::ResourceRecord::new(
             dns::Name::new("@").unwrap(),
             dns::CLASS::IN,
@@ -200,7 +198,6 @@ mod tests {
         let key = Keypair::random();
 
         let url = Url::parse("https://datastore.example.com").unwrap();
-        println!("{:?}", url);
 
         let mut resolver = Resolver::new(Option::<&Url>::None);
         let _ = resolver.publish(&key, &url, Option::<&Url>::None).unwrap();
