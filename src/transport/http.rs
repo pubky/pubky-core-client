@@ -45,3 +45,31 @@ pub fn request(
         Err(err) => Err(format!("Error: {:?}", err)),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use mockito;
+
+    #[test]
+    fn test_request() {
+        let mut server = mockito::Server::new();
+        server
+            .mock("GET", "/test")
+            .with_status(200)
+            .with_header("Set-Cookie", "sessionId=123")
+            .with_body("test")
+            .create();
+
+        let mut session_id = None;
+        let headers = HeaderMap::new();
+        let body = None;
+        let path = Url::parse(&format!("{}/test", server.url())).unwrap();
+
+        let res = request(Method::GET, path, &mut session_id, Some(&headers), body);
+
+        assert_eq!(res.is_ok(), true);
+        assert_eq!(session_id.is_some(), true);
+        assert_eq!(session_id.unwrap(), "123");
+    }
+}
