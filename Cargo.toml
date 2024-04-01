@@ -12,3 +12,6 @@ uuid = "1.7.0"
 pkarr = { version = "1.1.2", features = ["dht", "relay"]}
 reqwest = { version = "0.12.2", features = ["blocking", "cookies", "json"] }
 z32 = "1.1.1"
+
+[dev-dependencies]
+mockito = "1.4.0"
