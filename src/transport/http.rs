@@ -5,12 +5,6 @@ use reqwest::Method;
 use reqwest::Url;
 use std::collections::HashMap;
 
-/// Get challenge, sign it and authenticate
-// pub fn send_user_root_signature(&self, sig_type: &str, keypair: &str) -> Result<&str, Error> {}
-
-/// Get challenge
-// pub fn get_challenge(&self) -> Result<&str, Error> {}
-
 // Have a hashmap homeserverUrl -> sessionId
 // Q: how to clean it? -> delete manually
 //
@@ -23,7 +17,7 @@ pub fn request(
     headers: Option<&HeaderMap>,
     body: Option<String>,
 ) -> Result<String, String> {
-    // TODO: move somewhere outside
+    // TODO: move somewhere outside?
     let client = Client::new();
     let mut request_builder = client.request(method, path);
 

@@ -12,6 +12,7 @@
 // struct ClientConfig {
 //   homeserver_url: Option<String>,
 //   relay: Option<String>,
+//   relay: Option<String>,
 // }
 //
 // impl Client {
@@ -38,21 +39,45 @@
 //         }
 //     }
 //
-//     /// Create a new account at the config homeserver
-//     pub fn signup(&self, seed: &str) -> Result<&str, Error> {}
+//     /* "repos" related logic */
+//     /// Create repository for user
+//     pub fn create(&self, user_id:&str, repo_name: &str) -> Result<_, String> {
 //
-//     /// Login to an account at the config homeserver
-//     pub fn login(&self, seed: &str) -> Result<&str, Error> {}
+//         Ok()
+//     };
+//     // get, delete, list, query
+//     /// Put data into user's repository and return URL to this repo
+//     pub fn put (&self, user_id:&str, repo_name: &str, path: &str, payload: &str) -> Result<Url, String> {
+//         Ok()
+//     }
 //
-//     /// Logout from a specific account at the config homeserver
-//     pub fn logout(&self, userId: &str) -> Result<&str, Error> {}
+//     /// Get data from user's repository and return it as a JSON(?)
+//     pub fn get (&self, user_id: &str, repo_name: &str, path: &str) -> Result<Data, String> { }
 //
-//     /// Examine the current session at the config homeserver
-//     pub fn session(&self) -> Result<&str, Error> {}
+//     /// Delete data from user's repository
+//     pub fn delete (&self, user_id: &str, repo_name: &str, path: &str) -> Result<_, String> { }
 //
-//     /// Generate keypair from a seed
-//     pub fn keypair(&self, seed: &str) -> Result<&str, Error> {}
+//     /// List data in user's repository
+//     /*
+//     ListOption {
+//          reverse: bool,
+//          offset: usize,
+//          limit: usize,
+//     }
+//     */
+//     pub fn list (&self, user_id: &str, repo_name: &str, path: &str, opts: Option<ListOption>) -> Result<Vec<String>, String> { }
 //
-//     /// Internal helper to parse
-//     fn parse_id(id: &str) -> Result<&str, Error> {}
+//
+//     /// Query data in user's repository
+//     /*
+//     // Maybe can repurpose ListOption
+//     QueryOptions {
+//          reverse: bool,
+//          start: usize,
+//          end: usize,
+//          limit: usize,
+//          reverse: bool,
+//     }
+//     */
+//     pub fn query (&self, user_id: &str, repo_name: &str, query: Option<QueryOptions>) -> Result<Vec<String>, String> { }
 // }
