@@ -1,5 +1,6 @@
 mod transport;
 use crate::transport::resolver::Resolver;
+use crate::transport::http;
 use pkarr::DEFAULT_PKARR_RELAY;
 
 use reqwest::Url;
@@ -8,22 +9,21 @@ mod paykit;
 mod transport_fs;
 
 fn main() {
-    let key = "hexxxkc4rn3c6hsg17eugwbz88ci9qsa4f87qe85e89jstmmfo5o";
-    let relay_url = Url::parse(&DEFAULT_PKARR_RELAY).unwrap();
+    let mut session_id = Some("sessionId".to_string());
+    let res = http::request(
+        reqwest::Method::GET,
+        Url::parse(&format!("{}", "http://google.com")).unwrap(),
+        &mut session_id,
+        None,
+        None,
+    );
 
-    let mut resolver = Resolver::new(Option::<&Url>::None);
-    let res =
-        resolver.resolve_homeserver(key.try_into().expect("failed key"), Option::<&Url>::None);
-    println!("DHT: {:?}", res);
-
-    let res = resolver.resolve_homeserver(key.try_into().expect("failed key"), Some(&relay_url));
-    println!("DHT (relay): {:?}", res);
-
-    let mut resolver = Resolver::new(Some(&relay_url));
-    let res =
-        resolver.resolve_homeserver(key.try_into().expect("failed key"), Option::<&Url>::None);
-    println!("Resolver Relay: {:?}", res);
-
-    let res = resolver.resolve_homeserver(key.try_into().expect("failed key"), Some(&relay_url));
-    println!("Method Relay: {:?}", res);
+    match res {
+        Ok(res) => {
+            println!("Success: {:?}", res);
+        }
+        Err(err) => {
+            println!("Error: {:?}", err);
+        }
+    }
 }

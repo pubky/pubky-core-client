@@ -24,5 +24,5 @@
 // Helper method to request data from the data Storage by api_base url
 
 pub mod resolver;
-// pub mod http;
+pub mod http;
 // pub mod client;
