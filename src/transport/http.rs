@@ -23,6 +23,7 @@ pub fn request(
     headers: Option<&HeaderMap>,
     body: Option<String>,
 ) -> Result<String, String> {
+    // TODO: move somewhere outside
     let client = Client::new();
     let mut request_builder = client.request(method, path);
 
