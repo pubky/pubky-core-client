@@ -1,4 +1,4 @@
-use pkarr::{dns, PkarrClient, PublicKey, SignedPacket};
+use pkarr::{dns, Keypair, PkarrClient, PublicKey, SignedPacket};
 use reqwest::Url;
 use std::collections::HashMap;
 
@@ -13,13 +13,15 @@ pub struct Resolver<'a> {
 }
 
 impl Resolver<'_> {
+    /// Creates a new resolver, if relay_url is None, it will publish to DHT
     pub fn new(relay_url: Option<&Url>) -> Resolver {
         Resolver {
             relay_url,
             cache: HashMap::new(),
         }
     }
-    /// Resolves home server url using relay (with name '_pubky')
+
+    /// Resolves home server url using DHT or relay (with name '_pubky')
     pub fn resolve_homeserver(
         &mut self,
         public_key: &PublicKey,
@@ -49,10 +51,9 @@ impl Resolver<'_> {
 
                         match v {
                             None => return Err("No value found".to_string()),
-                            Some(v) => match self.resolve_homeserver_url(
-                                &v.as_str().try_into().unwrap(),
-                                relay_url,
-                            ) {
+                            Some(v) => match self
+                                .resolve_homeserver_url(&v.as_str().try_into().unwrap(), relay_url)
+                            {
                                 Err(e) => return Err(e),
                                 Ok(url) => {
                                     let key = public_key.to_string().clone();
@@ -74,7 +75,54 @@ impl Resolver<'_> {
         Err("No records found".to_string())
     }
 
-    /// Resolves home server url using relay (with name '@')
+    /// Publish record to relay or DHT
+    pub fn publish(
+        &self,
+        key_pair: &Keypair,
+        homeserver_url: &Url,
+        relay_url: Option<&Url>,
+    ) -> Result<(), String> {
+        let client = PkarrClient::new();
+        let mut packet = dns::Packet::new_reply(0);
+        let home = format!("home={}", &key_pair.public_key());
+        let home = home.as_str();
+
+        packet.answers.push(dns::ResourceRecord::new(
+            dns::Name::new("_pubky").unwrap(),
+            dns::CLASS::IN,
+            7200,
+            dns::rdata::RData::TXT(home.try_into().unwrap()),
+        ));
+
+        println!("Homeserver url: {}", homeserver_url);
+        println!("DNS: {}", dns::Name::new(homeserver_url.as_str()).unwrap());
+        packet.answers.push(dns::ResourceRecord::new(
+            dns::Name::new("@").unwrap(),
+            dns::CLASS::IN,
+            30,
+            dns::rdata::RData::CNAME(dns::Name::new(homeserver_url.as_str()).unwrap().into()),
+        ));
+
+        let signed_packet = SignedPacket::from_packet(&key_pair, &packet).unwrap();
+
+        let res = match relay_url {
+            Some(relay_url) => client.relay_put(relay_url, &signed_packet),
+            None => match &self.relay_url {
+                Some(relay_url) => client.relay_put(&relay_url, &signed_packet),
+                None => {
+                    let _ = client.publish(&signed_packet);
+                    Ok(())
+                }
+            },
+        };
+
+        match res {
+            Ok(_) => Ok(()),
+            Err(_e) => Err("Failed to publish".to_string()),
+        }
+    }
+
+    /// Resolves home server url using DHT or relay (with name '@')
     fn resolve_homeserver_url(
         &self,
         public_key: &PublicKey,
@@ -92,7 +140,8 @@ impl Resolver<'_> {
                 dns::rdata::RData::CNAME(cname) => {
                     // See https://docs.rs/simple-dns/latest/simple_dns/rdata/struct.CNAME.html#fields
                     return Ok(
-                        Url::parse(format!("https://{}", cname.0.to_string()).as_str()).unwrap(),
+                        // Url::parse(format!("https://{}", cname.0.to_string()).as_str()).unwrap(),
+                        Url::parse(&cname.0.to_string()).unwrap(),
                     );
                 }
                 dns::rdata::RData::TXT(txt) => {
@@ -103,9 +152,11 @@ impl Resolver<'_> {
                         }
                         match v {
                             Some(v) => {
-                                return Ok(Url::parse(format!("http://{k}{v}").as_str()).unwrap())
+                                // return Ok(Url::parse(format!("http://{k}{v}").as_str()).unwrap())
+                                return Ok(Url::parse(format!("{k}{v}").as_str()).unwrap());
                             }
-                            None => return Ok(Url::parse(format!("http://{k}").as_str()).unwrap()),
+                            // None => return Ok(Url::parse(format!("http://{k}").as_str()).unwrap()),
+                            None => return Ok(Url::parse(&k.as_str()).unwrap()),
                         }
                     }
                 }
@@ -116,6 +167,7 @@ impl Resolver<'_> {
         Err("No records found".to_string())
     }
 
+    /// Looks up a public key in the relay or DHT
     fn lookup<'a>(
         &self,
         public_key: &PublicKey,
@@ -146,31 +198,16 @@ mod tests {
     #[test]
     fn test_resolve_homeserver_from_dht() {
         let key = Keypair::random();
-        let client = PkarrClient::new();
 
-        let mut packet = dns::Packet::new_reply(0);
-        let home = format!("home={}", &key.public_key());
-        let home = home.as_str();
-
-        packet.answers.push(dns::ResourceRecord::new(
-            dns::Name::new("_pubky").unwrap(),
-            dns::CLASS::IN,
-            30,
-            dns::rdata::RData::TXT(home.try_into().unwrap()),
-        ));
-        packet.answers.push(dns::ResourceRecord::new(
-            dns::Name::new("@").unwrap(),
-            dns::CLASS::IN,
-            30,
-            dns::rdata::RData::CNAME(dns::Name::new("example.com").unwrap().into()),
-        ));
-
-        let signed_packet = SignedPacket::from_packet(&key, &packet).unwrap();
-        client.publish(&signed_packet).unwrap();
+        let url = Url::parse("https://datastore.example.com").unwrap();
+        println!("{:?}", url);
 
         let mut resolver = Resolver::new(Option::<&Url>::None);
-        let res = resolver.resolve_homeserver(&key.public_key(), Option::<&Url>::None);
+        let _ = resolver.publish(&key, &url, Option::<&Url>::None).unwrap();
+        let res = resolver
+            .resolve_homeserver(&key.public_key(), Option::<&Url>::None)
+            .unwrap();
 
-        assert_eq!(res.unwrap().to_string(), "https://example.com/".to_string());
+        assert_eq!(res.to_string(), url.to_string());
     }
 }
