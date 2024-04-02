@@ -191,7 +191,6 @@ impl Resolver<'_> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use pkarr::{dns, Keypair, PkarrClient, SignedPacket};
 
     #[test]
     fn test_resolve_homeserver_from_dht() {
