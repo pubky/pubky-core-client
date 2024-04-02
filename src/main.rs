@@ -1,4 +1,5 @@
 mod transport;
+mod crypto;
 use crate::transport::resolver::Resolver;
 use crate::transport::http;
 use pkarr::DEFAULT_PKARR_RELAY;
