@@ -13,6 +13,7 @@ pkarr = { version = "1.1.2", features = ["dht", "relay"]}
 reqwest = { version = "0.12.2", features = ["blocking", "cookies", "json"] }
 z32 = "1.1.1"
 blake3 = "1.5.1"
+ed25519-dalek = { version = "2.1.1", features = ["rand_core"] }
 
 [dev-dependencies]
 mockito = "1.4.0"
