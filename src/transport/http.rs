@@ -1,11 +1,9 @@
 use reqwest::blocking::Client;
 use reqwest::header::HeaderMap;
-use reqwest::Body;
 use reqwest::Method;
 use reqwest::Url;
-use std::collections::HashMap;
 
-// Have a hashmap homeserverUrl -> sessionId
+// Have a hashmap homeserverUrl -> session_id
 // Q: how to clean it? -> delete manually
 //
 // IMO it is better for client to handle resolving and for http to handle sessions
@@ -13,7 +11,7 @@ use std::collections::HashMap;
 pub fn request(
     method: Method,
     path: Url,
-    sessionId: &mut Option<String>,
+    session_id: &mut Option<String>,
     headers: Option<&HeaderMap>,
     body: Option<String>,
 ) -> Result<String, String> {
@@ -25,8 +23,8 @@ pub fn request(
         request_builder = request_builder.body(body);
     }
 
-    if let Some(sessionId) = sessionId {
-        request_builder = request_builder.header("cookie", format!("sessionId={}", sessionId));
+    if let Some(session_id) = session_id {
+        request_builder = request_builder.header("cookie", format!("sessionId={}", session_id));
     }
 
     if let Some(headers) = headers {
@@ -38,7 +36,7 @@ pub fn request(
         Ok(res) => {
             let found_session_id = res.cookies().find(|c| c.name() == "sessionId");
             if let Some(s_id) = found_session_id {
-                *sessionId = Some(s_id.value().to_string());
+                *session_id = Some(s_id.value().to_string());
             }
             Ok(res.text().unwrap())
         }
