@@ -986,6 +986,7 @@ dependencies = [
  "ed25519-dalek",
  "mockito",
  "pkarr",
+ "rand",
  "reqwest 0.12.2",
  "serde",
  "serde_json",

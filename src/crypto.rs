@@ -11,6 +11,11 @@ pub use pkarr::PublicKey;
 
 use ed25519_dalek::SigningKey;
 
+// Re-exporting public key for the challenge
+#[allow(unused_imports)]
+pub use ed25519_dalek::Signature;
+
+
 use pkarr::Keypair;
 
 pub trait DeterministicKeyGen {
