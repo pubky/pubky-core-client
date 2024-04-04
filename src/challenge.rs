@@ -2,6 +2,7 @@ use crate::crypto;
 
 use std::time::{SystemTime, UNIX_EPOCH};
 
+#[derive(Debug)]
 pub struct Challenge {
     value: [u8; 32],
     expires_at: u64,
@@ -12,13 +13,6 @@ static CONTEXT: &str = "pubky:homeserver:challenge";
 
 impl Challenge {
     pub fn new(value: [u8; 32], expires_at: u64, signable: [u8; 32]) -> Self {
-        let now = SystemTime::now();
-        let expires_at = now
-            .duration_since(UNIX_EPOCH)
-            .expect("Time went backwards")
-            .as_secs()
-            + expires_at;
-
         Self {
             value,
             expires_at,
@@ -26,15 +20,21 @@ impl Challenge {
         }
     }
 
-    pub fn create(challenge: [u8; 32], expires: u64) -> Self {
+    pub fn create(expires_at: u64, challenge: Option<[u8; 32]>) -> Self {
+        let challenge = match challenge {
+            Some(challenge) => challenge,
+            None => crypto::random_bytes(32).try_into().expect("Something went wrong")
+        };
         let signable = Self::signable(&challenge);
-        Self::new(challenge, expires, signable)
+
+        Self::new(challenge, expires_at, signable)
     }
 
     pub fn serialize(&self) -> Vec<u8> {
         let mut bytes = Vec::with_capacity(40);
         bytes.extend_from_slice(&self.value);
         bytes.extend_from_slice(&self.expires_at.to_be_bytes());
+
         bytes
     }
 
@@ -44,37 +44,38 @@ impl Challenge {
 
         let mut expires_at = [0; 8];
         expires_at.copy_from_slice(&bytes[32..40]);
+        let expires_at = u64::from_be_bytes(expires_at);
 
-        Self::new(value, u64::from_be_bytes(expires_at), [0; 32])
+        Self::new(value, expires_at, Self::signable(&value))
     }
 
     pub fn expired(&self) -> bool {
-        let now = SystemTime::now();
-        let now = now
-            .duration_since(UNIX_EPOCH)
-            .expect("Time went backwards")
-            .as_secs();
-
-        self.expires_at <= now
-    }
-
-    pub fn generate() -> Self {
-        let challenge = crypto::random_bytes(32);
-        Self::create(challenge.try_into().expect("Invalid size"), 0)
+        self.expires_at <= Self::now()
     }
 
     pub fn signable(challenge: &[u8]) -> [u8; 32] {
         crypto::blake3::derive_key(CONTEXT, challenge)
     }
 
-    pub fn verify(&self, signature: &crypto::Signature, public_key: &crypto::PublicKey) -> Result<(), &'static str> {
+    pub fn verify(
+        &self,
+        signature: &crypto::Signature,
+        public_key: &crypto::PublicKey,
+    ) -> Result<(), &'static str> {
         if self.expired() {
             return Err("Expired challenge");
         }
 
-        public_key.verify(&self.signable, signature);
+        let _foo = public_key.verify(&self.signable, signature);
 
         Ok(())
+    }
+
+    pub fn now() -> u64 {
+        let now = SystemTime::now();
+        now.duration_since(UNIX_EPOCH)
+            .expect("Time went backwards")
+            .as_secs()
     }
 }
 
@@ -84,12 +85,13 @@ mod tests {
 
     #[test]
     fn test_challenge() {
-        let challenge = Challenge::generate();
+        let challenge = Challenge::create(Challenge::now(), None);
         let serialized = challenge.serialize();
         let deserialized = Challenge::deserialize(&serialized);
 
         assert_eq!(challenge.value, deserialized.value);
         assert_eq!(challenge.expires_at, deserialized.expires_at);
+        assert!(challenge.expired())
     }
 
     #[test]
@@ -102,7 +104,7 @@ mod tests {
 
     #[test]
     fn test_verify() {
-        let challenge = Challenge::generate();
+        let challenge = Challenge::create(Challenge::now() + 1000, None);
         let keypair = pkarr::Keypair::random();
         let signature = keypair.sign(&challenge.signable);
 
