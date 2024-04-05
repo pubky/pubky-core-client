@@ -91,7 +91,7 @@ mod tests {
 
         assert_eq!(challenge.value, deserialized.value);
         assert_eq!(challenge.expires_at, deserialized.expires_at);
-        assert!(challenge.expired())
+        assert!(challenge.expires_at <= Challenge::now())
     }
 
     #[test]
@@ -100,6 +100,13 @@ mod tests {
         let signable = Challenge::signable(&challenge);
 
         assert_eq!(signable.len(), 32);
+    }
+
+    #[test]
+    fn test_expired() {
+        let challenge = Challenge::create(Challenge::now() - 1000, None);
+
+        assert!(challenge.expired());
     }
 
     #[test]
