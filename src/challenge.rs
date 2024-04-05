@@ -21,10 +21,9 @@ impl Challenge {
     }
 
     pub fn create(expires_at: u64, challenge: Option<[u8; 32]>) -> Self {
-        let challenge = match challenge {
-            Some(challenge) => challenge,
-            None => crypto::random_bytes(32).try_into().expect("Something went wrong")
-        };
+        let challenge = challenge.unwrap_or_else(|| {
+            crypto::random_bytes(32).try_into().expect("Failed to generate challenge")
+        });
         let signable = Self::signable(&challenge);
 
         Self::new(challenge, expires_at, signable)
@@ -50,7 +49,7 @@ impl Challenge {
     }
 
     pub fn expired(&self) -> bool {
-        self.expires_at <= Self::now()
+        self.expires_at <= now()
     }
 
     pub fn signable(challenge: &[u8]) -> [u8; 32] {
@@ -67,16 +66,17 @@ impl Challenge {
         }
 
         let _foo = public_key.verify(&self.signable, signature);
+        println!("{:?}", _foo);
 
         Ok(())
     }
+}
 
-    pub fn now() -> u64 {
-        let now = SystemTime::now();
-        now.duration_since(UNIX_EPOCH)
-            .expect("Time went backwards")
-            .as_secs()
-    }
+fn now() -> u64 {
+    let now = SystemTime::now();
+    now.duration_since(UNIX_EPOCH)
+        .expect("Time went backwards")
+        .as_secs()
 }
 
 #[cfg(test)]
@@ -85,13 +85,13 @@ mod tests {
 
     #[test]
     fn test_challenge() {
-        let challenge = Challenge::create(Challenge::now(), None);
+        let challenge = Challenge::create(now(), None);
         let serialized = challenge.serialize();
         let deserialized = Challenge::deserialize(&serialized);
 
         assert_eq!(challenge.value, deserialized.value);
         assert_eq!(challenge.expires_at, deserialized.expires_at);
-        assert!(challenge.expires_at <= Challenge::now())
+        assert!(challenge.expires_at <= now())
     }
 
     #[test]
@@ -104,14 +104,14 @@ mod tests {
 
     #[test]
     fn test_expired() {
-        let challenge = Challenge::create(Challenge::now() - 1000, None);
+        let challenge = Challenge::create(now() - 1000, None);
 
         assert!(challenge.expired());
     }
 
     #[test]
     fn test_verify() {
-        let challenge = Challenge::create(Challenge::now() + 1000, None);
+        let challenge = Challenge::create(now() + 1000, None);
         let keypair = pkarr::Keypair::random();
         let signature = keypair.sign(&challenge.signable);
 
