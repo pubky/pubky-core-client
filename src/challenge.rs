@@ -21,8 +21,11 @@ impl Challenge {
     }
 
     pub fn create(expires_at: u64, challenge: Option<[u8; 32]>) -> Self {
+        // Lazily generate a challenge if none is provided
         let challenge = challenge.unwrap_or_else(|| {
-            crypto::random_bytes(32).try_into().expect("Failed to generate challenge")
+            crypto::random_bytes(32)
+                .try_into()
+                .expect("Failed to generate challenge")
         });
         let signable = Self::signable(&challenge);
 
@@ -65,10 +68,10 @@ impl Challenge {
             return Err("Expired challenge");
         }
 
-        let _foo = public_key.verify(&self.signable, signature);
-        println!("{:?}", _foo);
-
-        Ok(())
+        match public_key.verify(&self.signable, signature) {
+            Ok(_) => Ok(()),
+            Err(_) => Err("Invalid signature"),
+        }
     }
 }
 
@@ -115,8 +118,6 @@ mod tests {
         let keypair = pkarr::Keypair::random();
         let signature = keypair.sign(&challenge.signable);
 
-        assert!(challenge
-            .verify(&signature, &keypair.public_key())
-            .is_ok());
+        assert!(challenge.verify(&signature, &keypair.public_key()).is_ok());
     }
 }
