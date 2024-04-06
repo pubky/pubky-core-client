@@ -1,5 +1,5 @@
 /// Create a new account at the config homeserver
-pub fn signup(&self, seed: &str) -> Result<&str, Error> {
+pub fn signup(seed: &str) -> Result<&str, Error> {
     // TODO:
     // generate keypair from seed
     // send user root signature as signup
@@ -13,28 +13,31 @@ pub fn signup(&self, seed: &str) -> Result<&str, Error> {
 }
 
 /// Login to an account at the config homeserver
-pub fn login(&self, seed: &str) -> Result<&str, Error> {
+pub fn login(seed: &str) -> Result<&str, Error> {
+    /// TOOD:
     // create keypair from seed
     // send user root signature as login
     // zeroize private keypair
     // return null or userId ?
-
 }
 
 /// Logout from a specific account at the config homeserver
-pub fn logout(&self, userId: &str) -> Result<&str, Error> {
+pub fn logout(userId: &str) -> Result<&str, Error> {
+    // TODO:
     // DELETE /mvp/session/{userId}
 }
 
 /// Examine the current session at the config homeserver
-pub fn session(&self) -> Result<&str, Error> {
+pub fn session() -> Result<&str, Error> {
+    // TODO:
     // GET /mvp/session
     // return response
 }
 
 
 /// Get challenge, sign it and authenticate
-pub fn send_user_root_signature(&self, sig_type: &str, keypair: &str) -> Result<&str, Error> {
+pub fn send_user_root_signature(sig_type: &str, keypair: &str) -> Result<&str, Error> {
+    // TODO:
     // get challenge
     // sign challenge
     // encode userId to z32
@@ -46,6 +49,7 @@ pub fn send_user_root_signature(&self, sig_type: &str, keypair: &str) -> Result<
 
 /// Get challenge
 pub fn get_challenge(&self) -> Result<&str, Error> {
+    // TODO:
     // GET /mvp/challenge
     // desserialize response into challenge
     // return challenge
