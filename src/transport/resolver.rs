@@ -4,6 +4,7 @@ use std::collections::HashMap;
 
 pub struct Resolver<'a> {
     relay_url: Option<&'a Url>,
+    // NOTE: Cache is needed mostly for DHT lookups
     // TODO: add suport for different cache strategeies:
     // - read through
     // - read around
@@ -56,12 +57,12 @@ impl Resolver<'_> {
                             {
                                 Err(e) => return Err(e),
                                 Ok(url) => {
-                                    let key = public_key.to_string().clone();
+                                    let key = public_key.to_string();
                                     let _ = &self.cache.insert(key.clone(), url.clone());
 
                                     return Ok(self
                                         .cache
-                                        .get(&key)
+                                        .get(&key.clone())
                                         .expect("Failed to get value from cache"));
                                 }
                             },
@@ -182,7 +183,7 @@ impl Resolver<'_> {
         };
 
         match entry {
-            None => return Err("No entry found".to_string()),
+            None => Err("No entry found".to_string()),
             Some(entry) => Ok(entry),
         }
     }

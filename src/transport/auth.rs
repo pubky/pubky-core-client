@@ -1,7 +1,15 @@
+mod transport;
+mod crypto;
+
+use transport::Resolver;
+use crypto::DeterministicKeyPair;
+use transport::http;
+
 /// Create a new account at the config homeserver
 pub fn signup(seed: &str) -> Result<&str, Error> {
     // TODO:
     // generate keypair from seed
+    let keypair = DeterministicKeyPair::generate(Some(seed));
     // send user root signature as signup
     // create signed packet with keypair and homeserverId
     // userId = encode public key into z32
@@ -16,6 +24,7 @@ pub fn signup(seed: &str) -> Result<&str, Error> {
 pub fn login(seed: &str) -> Result<&str, Error> {
     /// TOOD:
     // create keypair from seed
+    let keypair = DeterministicKeyPair::generate(Some(seed));
     // send user root signature as login
     // zeroize private keypair
     // return null or userId ?
