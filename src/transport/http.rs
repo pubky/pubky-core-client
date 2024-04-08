@@ -1,6 +1,6 @@
 use reqwest::blocking::Client;
 use reqwest::header::HeaderMap;
-use reqwest::Method;
+pub use reqwest::Method as Method;
 use reqwest::Url;
 
 // Have a hashmap homeserverUrl -> session_id
@@ -15,7 +15,7 @@ pub fn request(
     headers: Option<&HeaderMap>,
     body: Option<String>,
 ) -> Result<String, String> {
-    // TODO: move somewhere outside?
+    // TODO: consider moving somewhere outside?
     let client = Client::new();
     let mut request_builder = client.request(method, path);
 
