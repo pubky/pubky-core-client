@@ -116,7 +116,10 @@ impl Resolver<'_> {
         };
 
         match res {
-            Ok(_) => Ok(()),
+            Ok(_) => {
+                let _ = &self.cache.insert(key_pair.to_z32().clone(), url.clone());
+                Ok(())
+            },
             Err(_e) => Err("Failed to publish".to_string()),
         }
     }
