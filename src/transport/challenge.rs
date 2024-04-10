@@ -1,12 +1,12 @@
-use crate::crypto;
+use crate::transport::crypto;
 
 use std::time::{SystemTime, UNIX_EPOCH};
 
 #[derive(Debug)]
 pub struct Challenge {
-    value: [u8; 32],
-    expires_at: u64,
-    signable: [u8; 32],
+    pub value: [u8; 32],
+    pub expires_at: u64,
+    pub signable: [u8; 32],
 }
 
 static CONTEXT: &str = "pubky:homeserver:challenge";
