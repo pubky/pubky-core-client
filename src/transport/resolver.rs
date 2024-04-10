@@ -27,12 +27,13 @@ impl Resolver<'_> {
         &mut self,
         public_key: &PublicKey,
         relay_url: Option<&Url>,
-    ) -> Result<&Url, String> {
+    ) -> Result<Url, String> {
         if self.cache.contains_key(&public_key.to_string()) {
             return Ok(self
                 .cache
                 .get(&public_key.to_string())
-                .expect("Failed to get value from cache"));
+                .expect("Failed to get value from cache")
+                .clone())
         }
 
         let packet = match self.lookup(public_key, relay_url) {
@@ -63,7 +64,8 @@ impl Resolver<'_> {
                                     return Ok(self
                                         .cache
                                         .get(&key.clone())
-                                        .expect("Failed to get value from cache"));
+                                        .expect("Failed to get value from cache")
+                                        .clone())
                                 }
                             },
                         }
@@ -78,7 +80,7 @@ impl Resolver<'_> {
 
     /// Publish record to relay or DHT
     pub fn publish(
-        &self,
+        &mut self,
         key_pair: &Keypair,
         homeserver_url: &Url,
         relay_url: Option<&Url>,
@@ -117,7 +119,7 @@ impl Resolver<'_> {
 
         match res {
             Ok(_) => {
-                let _ = &self.cache.insert(key_pair.to_z32().clone(), url.clone());
+                let _ = &self.cache.insert(key_pair.to_z32().clone(), homeserver_url.clone());
                 Ok(())
             },
             Err(_e) => Err("Failed to publish".to_string()),
