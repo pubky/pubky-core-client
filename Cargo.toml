@@ -17,4 +17,5 @@ ed25519-dalek = { version = "2.1.1", features = ["rand_core"] }
 rand = { version = "0.8.5", features = ["getrandom"] }
 
 [dev-dependencies]
+mainline = "1.4.0"
 mockito = "1.4.0"
