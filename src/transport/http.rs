@@ -1,7 +1,7 @@
 use reqwest::blocking::Client;
-use reqwest::header::HeaderMap;
+pub use reqwest::header::HeaderMap as HeaderMap;
 pub use reqwest::Method as Method;
-use reqwest::Url;
+pub use reqwest::Url;
 
 // Have a hashmap homeserverUrl -> session_id
 // Q: how to clean it? -> delete manually
