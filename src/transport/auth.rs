@@ -111,7 +111,6 @@ impl Auth<'_> {
 
     /// Examine the current session at the config homeserver
     pub fn session(&mut self) -> Result<String, String> {
-        // GET /mvp/session
         if self.homeserver_url.is_none() {
             return Err("No homeserver found".to_string());
         }
@@ -244,13 +243,9 @@ mod test {
     fn auth_walk_through() {
         let testnet = Testnet::new(10);
 
-        let seed_1 = b"it is a seed for key generation!";
-        let key_pair_1: Keypair = DeterministicKeyGen::generate(Some(seed_1));
-        let user1_id = key_pair_1.to_z32();
-
-        let seed_2 = b"another seed for the readers key";
-        let key_pair_2: Keypair = DeterministicKeyGen::generate(Some(seed_2));
-        let user2_id = key_pair_2.to_z32();
+        let seed = b"it is a seed for key generation!";
+        let key_pair: Keypair = DeterministicKeyGen::generate(Some(seed));
+        let user_id = key_pair.to_z32();
 
         let challenge = Challenge::create(now() + 1000, None);
 
@@ -262,7 +257,7 @@ mod test {
             headers: vec![],
         };
 
-        let path = format!("/mvp/users/{}/pkarr", user1_id);
+        let path = format!("/mvp/users/{}/pkarr", user_id);
         let send_user_root_signature_signup_mock_params = HttpMockParams {
             method: &Method::PUT,
             path: path.as_str(),
@@ -271,7 +266,7 @@ mod test {
             body: &b"ok".to_vec(),
         };
 
-        let path = format!("/mvp/session/{}", user1_id);
+        let path = format!("/mvp/session/{}", user_id);
         let send_user_root_signature_login_mock_params = HttpMockParams {
             method: &Method::PUT,
             path: path.as_str(),
@@ -288,7 +283,7 @@ mod test {
             status: 200,
         };
 
-        let path = format!("/mvp/session/{}", user1_id);
+        let path = format!("/mvp/session/{}", user_id);
         let logout_mock_params = HttpMockParams {
             method: &Method::DELETE,
             path: path.as_str(),
@@ -306,13 +301,13 @@ mod test {
         ]);
 
         let mut resolver = Resolver::new(None, Some(&testnet.bootstrap));
-        let _ = resolver.publish(&key_pair_1, &Url::parse(&server.url()).unwrap(), None).unwrap();
+        let _ = resolver.publish(&key_pair, &Url::parse(&server.url()).unwrap(), None).unwrap();
 
         let mut auth = Auth::new(resolver, None);
 
         // TEST SIGNUP
-        let user_id = auth.signup(seed_1, None).unwrap();
-        assert_eq!(user_id, user1_id);
+        let user_id = auth.signup(seed, None).unwrap();
+        assert_eq!(user_id, user_id);
         assert_eq!(auth.homeserver_url, Some(Url::parse(&server.url()).unwrap()));
         assert_eq!(auth.session_id, Some("123".to_string()));
 
@@ -322,11 +317,15 @@ mod test {
         assert_eq!(session_id, "123");
 
         // // TEST LOGIN
-        let user_id = auth.login(seed_1, None).unwrap();
-        assert_eq!(user_id, user1_id);
+        let user_id = auth.login(seed, None).unwrap();
+        assert_eq!(user_id, user_id);
         assert_eq!(auth.homeserver_url, Some(Url::parse(&server.url()).unwrap()));
         assert_eq!(auth.session_id, Some("1234".to_string()));
 
         // TEST SESSION
+        let session = auth.session().unwrap();
+        assert_eq!(session, "session".to_string());
+        assert_eq!(auth.session_id, Some("12345".to_string()));
+        assert_eq!(auth.homeserver_url, Some(Url::parse(&server.url()).unwrap()));
     }
 }
