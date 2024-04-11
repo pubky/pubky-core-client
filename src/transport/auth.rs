@@ -46,6 +46,7 @@ impl Auth<'_> {
             };
         }
 
+        // XXX: this seems wrong, jsut home server url should be enough
         let target_url = self
             .homeserver_url
             .clone()
@@ -223,13 +224,71 @@ impl Auth<'_> {
 
 #[cfg(test)]
 mod test {
-    // create testnet dht
-    // generate seed
-    // create homeserver
-    //
-    // test signup
-    //
-    // test login
-    // test session
-    // test logout
+    use super::*;
+    use crate::test_utils::{setup_datastore, HttpMockParams}
+    use mainline::dht::Testnet;
+
+    fn walk_through() {
+        let testnet = Testnet::new(10);
+
+        let seed_1 = b"it is a seed for key generation!";
+        // create keypair
+        let seed_2 = b"another seed for key generation!";
+        // create keypair
+
+        let get_challange_mock_params = HttpMockParams {
+            method: Method::GET,
+            url: "/mvp/challenge".to_string(),
+            response: "challenge".to_string(), // TODO: proper challenge string
+        };
+
+        let send_user_root_signature_signup_mock_params = HttpMockParams {
+            method: Method::PUT,
+            url: format!("/mvp/users/{}/pkarr", user1_id),
+            // TODO: headers sessionId?
+            response: "ok".to_string(),
+        };
+
+        let send_user_root_signature_login_mock_params = HttpMockParams {
+            method: Method::PUT,
+            url: format!("/mvp/session/{}", user1_id),
+            // TODO: headers sessionId?
+            response: "ok".to_string(), // TODO: proper challenge string
+        };
+
+        let get_session_mock_params = HttpMockParams {
+            method: Method::GET,
+            url: "/mvp/session".to_string(),
+            // TODO: headers sessionId?
+            response: "session".to_string(), // TODO: proper session object
+        };
+
+        let logout_mock_params = HttpMockParams {
+            method: Method::DELETE,
+            // TODO: headers sessionId?
+            url: format!("/mvp/session/{}", user1_id),
+        }
+
+        // create homeserver
+        let server = setup_datastore(&testnet, vec![
+            get_challange_mock_params,
+            send_user_root_signature_signup_mock_params,
+            get_session_mock_params,
+            logout_mock_params,
+        ]);
+
+        let resolver = Resolver::new(&testnet);
+        // publish record
+
+        let mut auth = Auth::new(resolver, None);
+
+        // TEST SIGNUP
+        // assert homeserver_url
+        // maybe assert session_id
+        // assert user_id
+        //
+        // TEST LOGIN
+        // TEST SESSION
+        // TEST LOGOUT
+    }
 }
