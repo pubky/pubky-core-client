@@ -11,14 +11,16 @@ pub struct Resolver<'a> {
     // - read ahead
     // - read behind (current implementation)
     cache: HashMap<String, Url>,
+    bootstrap: Option<&'a Vec<String>>,
 }
 
 impl Resolver<'_> {
     /// Creates a new resolver, if relay_url is None, it will publish to DHT
-    pub fn new(relay_url: Option<&Url>) -> Resolver {
+    pub fn new<'a>(relay_url: Option<&'a Url>, bootstrap: Option<&'a Vec<String>>) -> Resolver<'a> {
         Resolver {
             relay_url,
             cache: HashMap::new(),
+            bootstrap,
         }
     }
 
@@ -33,7 +35,7 @@ impl Resolver<'_> {
                 .cache
                 .get(&public_key.to_string())
                 .expect("Failed to get value from cache")
-                .clone())
+                .clone());
         }
 
         let packet = match self.lookup(public_key, relay_url) {
@@ -65,7 +67,7 @@ impl Resolver<'_> {
                                         .cache
                                         .get(&key.clone())
                                         .expect("Failed to get value from cache")
-                                        .clone())
+                                        .clone());
                                 }
                             },
                         }
@@ -85,7 +87,14 @@ impl Resolver<'_> {
         homeserver_url: &Url,
         relay_url: Option<&Url>,
     ) -> Result<(), String> {
-        let client = PkarrClient::new();
+        let client = if self.bootstrap.is_some() {
+            PkarrClient::builder()
+                .bootstrap(&self.bootstrap.clone().unwrap())
+                .build()
+        } else {
+            PkarrClient::new()
+        };
+
         let mut packet = dns::Packet::new_reply(0);
         let home = format!("home={}", &key_pair.public_key());
         let home = home.as_str();
@@ -119,9 +128,11 @@ impl Resolver<'_> {
 
         match res {
             Ok(_) => {
-                let _ = &self.cache.insert(key_pair.to_z32().clone(), homeserver_url.clone());
+                let _ = &self
+                    .cache
+                    .insert(key_pair.to_z32().clone(), homeserver_url.clone());
                 Ok(())
-            },
+            }
             Err(_e) => Err("Failed to publish".to_string()),
         }
     }
@@ -177,7 +188,14 @@ impl Resolver<'_> {
         public_key: &PublicKey,
         relay_url: Option<&Url>,
     ) -> Result<SignedPacket, String> {
-        let client = PkarrClient::new();
+        let client = if self.bootstrap.is_some() {
+            PkarrClient::builder()
+                .bootstrap(&self.bootstrap.clone().unwrap())
+                .build()
+        } else {
+            PkarrClient::new()
+        };
+
         let public_key = public_key.clone();
         let entry = match relay_url {
             Some(relay_url) => client.relay_get(relay_url, public_key).unwrap(),
@@ -200,11 +218,14 @@ mod tests {
 
     #[test]
     fn test_resolve_homeserver_from_dht() {
+        use mainline::dht::Testnet;
+        let testnet = Testnet::new(10);
+
         let key = Keypair::random();
 
         let url = Url::parse("https://datastore.example.com").unwrap();
 
-        let mut resolver = Resolver::new(Option::<&Url>::None);
+        let mut resolver = Resolver::new(Option::<&Url>::None, Some(&testnet.bootstrap));
         let _ = resolver.publish(&key, &url, Option::<&Url>::None).unwrap();
         let res = resolver
             .resolve_homeserver(&key.public_key(), Option::<&Url>::None)
