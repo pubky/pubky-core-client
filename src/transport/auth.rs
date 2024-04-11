@@ -104,7 +104,10 @@ impl Auth<'_> {
             .unwrap();
 
         match request(Method::DELETE, url, &mut self.session_id, None, None) {
-            Ok(_) => Ok(()),
+            Ok(_) => {
+                &self.session_id.take();
+                Ok(())
+            },
             Err(e) => return Err(format!("Error logging out: {}", e)),
         }
     }
@@ -315,8 +318,12 @@ mod test {
         assert_eq!(auth.homeserver_url, Some(Url::parse(&server.url()).unwrap()));
         assert_eq!(auth.session_id, Some("123".to_string()));
 
+        // TEST LOGOUT
+        let _ = auth.logout(&user_id).unwrap();
+        assert_eq!(auth.session_id, None);
+
+
         // TEST LOGIN
         // TEST SESSION
-        // TEST LOGOUT
     }
 }
