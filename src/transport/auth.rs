@@ -46,16 +46,14 @@ impl Auth<'_> {
             };
         }
 
-        let target_url = &self
+        let target_url = self
             .homeserver_url
             .clone()
             .unwrap()
             .join(&format!("/mvp/users/{}/pkarr", user_id).as_str())
             .unwrap();
 
-        let url = <Option<Url> as Clone>::clone(&self.homeserver_url)
-            .unwrap()
-            .clone();
+        let url = self.homeserver_url.clone().unwrap();
         let _ = match &self.resolver.publish(key_pair, &url, Some(&target_url)) {
             Ok(_) => (),
             Err(e) => return Err(format!("Error publishing public key: {}", e)),
@@ -94,9 +92,7 @@ impl Auth<'_> {
             return Err("No homeserver found".to_string());
         }
 
-        let url = <Option<Url> as Clone>::clone(&self.homeserver_url)
-            .unwrap()
-            .clone();
+        let url = self.homeserver_url.clone().unwrap();
         let url = url
             .join(&format!("/mvp/session/{}", user_id).as_str())
             .unwrap();
@@ -114,9 +110,7 @@ impl Auth<'_> {
             return Err("No homeserver found".to_string());
         }
 
-        let url = <Option<Url> as Clone>::clone(&self.homeserver_url)
-            .unwrap()
-            .clone();
+        let url = self.homeserver_url.clone().unwrap();
         let url = url.join("/mvp/session").unwrap();
 
         match request(Method::GET, url.clone(), &mut self.session_id, None, None) {
@@ -165,10 +159,12 @@ impl Auth<'_> {
             SigType::Login => format!("/mvp/session/{}", user_id),
         };
 
-        let url = <Option<Url> as Clone>::clone(&self.homeserver_url)
+        let url = self
+            .homeserver_url
+            .clone()
             .unwrap()
-            .clone();
-        let url = url.join(path.as_str()).unwrap();
+            .join(path.as_str())
+            .unwrap();
 
         let mut headers = HeaderMap::new();
         headers.insert(
@@ -205,10 +201,12 @@ impl Auth<'_> {
             };
         };
 
-        let url = <Option<Url> as Clone>::clone(&self.homeserver_url)
+        let url = self
+            .homeserver_url
+            .clone()
             .unwrap()
-            .clone();
-        let url = url.join("/mvp/challenge").unwrap();
+            .join("/mvp/challenge")
+            .unwrap();
 
         match request(Method::GET, url.clone(), &mut self.session_id, None, None) {
             Ok(response) => Ok(Challenge::deserialize(response.as_bytes())),
