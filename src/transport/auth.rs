@@ -220,3 +220,16 @@ impl Auth<'_> {
         }
     }
 }
+
+#[cfg(test)]
+mod test {
+    // create testnet dht
+    // generate seed
+    // create homeserver
+    //
+    // test signup
+    //
+    // test login
+    // test session
+    // test logout
+}
