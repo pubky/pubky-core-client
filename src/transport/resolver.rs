@@ -225,10 +225,10 @@ mod tests {
 
         let url = Url::parse("https://datastore.example.com").unwrap();
 
-        let mut resolver = Resolver::new(Option::<&Url>::None, Some(&testnet.bootstrap));
-        let _ = resolver.publish(&key, &url, Option::<&Url>::None).unwrap();
+        let mut resolver = Resolver::new(None, Some(&testnet.bootstrap));
+        let _ = resolver.publish(&key, &url, None).unwrap();
         let res = resolver
-            .resolve_homeserver(&key.public_key(), Option::<&Url>::None)
+            .resolve_homeserver(&key.public_key(), None)
             .unwrap();
 
         assert_eq!(res.to_string(), url.to_string());
