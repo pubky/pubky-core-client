@@ -29,7 +29,7 @@ impl Auth<'_> {
         seed: &[u8; 32],
         dht_relay_url: Option<&Url>,
     ) -> Result<String, String> {
-        let key_pair = &DeterministicKeyGen::generate(Some(seed));
+        let key_pair: &Keypair = &DeterministicKeyGen::generate(Some(seed));
         let user_id = match self.send_user_root_signature(&SigType::Signup, key_pair, dht_relay_url)
         {
             Ok(user_id) => user_id,
@@ -55,7 +55,10 @@ impl Auth<'_> {
             .unwrap();
 
         let url = self.homeserver_url.clone().unwrap();
-        let _ = match &self.resolver.publish(key_pair, &url, Some(&target_url)) {
+
+        // XXX
+        // let _ = match &self.resolver.publish(key_pair, &url, Some(&target_url)) {
+        let _ = match &self.resolver.publish(key_pair, &url, None) {
             Ok(_) => (),
             Err(e) => return Err(format!("Error publishing public key: {}", e)),
         };
@@ -146,7 +149,7 @@ impl Auth<'_> {
     ) -> Result<String, String> {
         let challenge = self.get_challenge(&key_pair.public_key(), None);
         let signature = key_pair.sign(&challenge.unwrap().signable).to_string();
-        if signature.len() != 64 {
+        if signature.len() != 128 {
             return Err("Invalid signature length".to_string());
         }
         let user_id = key_pair.to_z32();
@@ -225,64 +228,92 @@ impl Auth<'_> {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::test_utils::{setup_datastore, HttpMockParams}
+    use crate::test_utils::{setup_datastore, HttpMockParams};
+    use crate::transport::crypto;
     use mainline::dht::Testnet;
+    use std::time::{SystemTime, UNIX_EPOCH};
 
-    fn walk_through() {
+    fn now() -> u64 {
+        let now = SystemTime::now();
+        now.duration_since(UNIX_EPOCH)
+            .expect("Time went backwards")
+            .as_secs()
+    }
+
+    #[test]
+    fn auth_walk_through() {
         let testnet = Testnet::new(10);
 
         let seed_1 = b"it is a seed for key generation!";
-        // create keypair
-        let seed_2 = b"another seed for key generation!";
-        // create keypair
+        let key_pair_1: Keypair = DeterministicKeyGen::generate(Some(seed_1));
+        let user1_id = key_pair_1.to_z32();
+
+        let seed_2 = b"another seed for the readers key";
+        let key_pair_2: Keypair = DeterministicKeyGen::generate(Some(seed_2));
+        let user2_id = key_pair_2.to_z32();
+
+        let challenge = Challenge::create(now() + 1000, None);
 
         let get_challange_mock_params = HttpMockParams {
-            method: Method::GET,
-            url: "/mvp/challenge".to_string(),
-            response: "challenge".to_string(), // TODO: proper challenge string
+            method: &Method::GET,
+            path: "/mvp/challenge",
+            body: &challenge.serialize(),
+            status: 200,
+            headers: vec![],
         };
 
+        let path = format!("/mvp/users/{}/pkarr", user1_id);
         let send_user_root_signature_signup_mock_params = HttpMockParams {
-            method: Method::PUT,
-            url: format!("/mvp/users/{}/pkarr", user1_id),
-            // TODO: headers sessionId?
-            response: "ok".to_string(),
+            method: &Method::PUT,
+            path: path.as_str(),
+            headers: vec![("Set-Cookie", "sessionId=123")],
+            status: 200,
+            body: &b"ok".to_vec(),
         };
 
+        let path = format!("/mvp/session/{}", user1_id);
         let send_user_root_signature_login_mock_params = HttpMockParams {
-            method: Method::PUT,
-            url: format!("/mvp/session/{}", user1_id),
-            // TODO: headers sessionId?
-            response: "ok".to_string(), // TODO: proper challenge string
+            method: &Method::PUT,
+            path: path.as_str(),
+            headers: vec![("Set-Cookie", "sessionId=123")],
+            body: &b"ok".to_vec(),
+            status: 200,
         };
 
         let get_session_mock_params = HttpMockParams {
-            method: Method::GET,
-            url: "/mvp/session".to_string(),
-            // TODO: headers sessionId?
-            response: "session".to_string(), // TODO: proper session object
+            method: &Method::GET,
+            path: "/mvp/session",
+            headers: vec![("Set-Cookie", "sessionId=123")],
+            body: &b"session".to_vec(), // TODO: proper session object
+            status: 200,
         };
 
+        let path = format!("/mvp/session/{}", user1_id);
         let logout_mock_params = HttpMockParams {
-            method: Method::DELETE,
-            // TODO: headers sessionId?
-            url: format!("/mvp/session/{}", user1_id),
-        }
+            method: &Method::DELETE,
+            path: path.as_str(),
+            status: 200,
+            body: &b"ok".to_vec(),
+            headers: vec![],
+        };
 
-        // create homeserver
-        let server = setup_datastore(&testnet, vec![
+        let server = setup_datastore(vec![
             get_challange_mock_params,
             send_user_root_signature_signup_mock_params,
             get_session_mock_params,
             logout_mock_params,
         ]);
 
-        let resolver = Resolver::new(&testnet);
-        // publish record
+        let mut resolver = Resolver::new(None, Some(&testnet.bootstrap));
+        let _ = resolver.publish(&key_pair_1, &Url::parse(&server.url()).unwrap(), None).unwrap();
 
         let mut auth = Auth::new(resolver, None);
 
         // TEST SIGNUP
+        let user_id = auth.signup(seed_1, None).unwrap();
+        println!("User ID: {}", user_id);
+        println!("Session: {:?}", auth.session_id);
+        println!("Homeserver URL: {:?}", auth.homeserver_url);
         // assert homeserver_url
         // maybe assert session_id
         // assert user_id
