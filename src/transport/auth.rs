@@ -92,8 +92,10 @@ impl Auth<'_> {
             return Err("No homeserver found".to_string());
         }
 
-        let url = self.homeserver_url.clone().unwrap();
-        let url = url
+        let url = self
+            .homeserver_url
+            .clone()
+            .unwrap()
             .join(&format!("/mvp/session/{}", user_id).as_str())
             .unwrap();
 
@@ -110,8 +112,12 @@ impl Auth<'_> {
             return Err("No homeserver found".to_string());
         }
 
-        let url = self.homeserver_url.clone().unwrap();
-        let url = url.join("/mvp/session").unwrap();
+        let url = self
+            .homeserver_url
+            .clone()
+            .unwrap()
+            .join("/mvp/session")
+            .unwrap();
 
         match request(Method::GET, url.clone(), &mut self.session_id, None, None) {
             Ok(response) => {
