@@ -1,7 +1,7 @@
 use crate::transport::challenge::Challenge;
-use crate::transport::http::{request, Method, Url, HeaderMap};
+use crate::transport::crypto::{zeroize, DeterministicKeyGen, Keypair, PublicKey};
+use crate::transport::http::{request, HeaderMap, Method, Url};
 use crate::transport::resolver::Resolver;
-use crate::transport::crypto::{DeterministicKeyGen, Keypair, PublicKey, zeroize};
 
 pub enum SigType {
     Signup,
@@ -24,9 +24,14 @@ impl Auth<'_> {
     }
 
     /// Create a new account at the config homeserver
-    pub fn signup(&mut self, seed: &[u8; 32], relay_url: Option<&Url>) -> Result<String, String> {
+    pub fn signup(
+        &mut self,
+        seed: &[u8; 32],
+        dht_relay_url: Option<&Url>,
+    ) -> Result<String, String> {
         let key_pair = &DeterministicKeyGen::generate(Some(seed));
-        let user_id = match self.send_user_root_signature(&SigType::Signup, key_pair, relay_url) {
+        let user_id = match self.send_user_root_signature(&SigType::Signup, key_pair, dht_relay_url)
+        {
             Ok(user_id) => user_id,
             Err(e) => return Err(format!("Error signing up: {}", e)),
         };
@@ -34,28 +39,24 @@ impl Auth<'_> {
         if self.homeserver_url.is_none() {
             self.homeserver_url = match self
                 .resolver
-                .resolve_homeserver(&key_pair.public_key(), relay_url)
+                .resolve_homeserver(&key_pair.public_key(), dht_relay_url)
             {
                 Ok(url) => Some(url),
                 Err(e) => return Err(format!("Error resolving homeserver: {}", e)),
             };
         }
 
-        let target_url = match relay_url {
-            Some(url) => url.join(&format!("/mvp/users/{}/pkarr", user_id).as_str()).unwrap(),
-            None => {
-                let url = <Option<Url> as Clone>::clone(&self.homeserver_url).unwrap().clone();
-                let path = format!("/mvp/users/{}/pkarr", user_id);
+        let target_url = &self
+            .homeserver_url
+            .clone()
+            .unwrap()
+            .join(&format!("/mvp/users/{}/pkarr", user_id).as_str())
+            .unwrap();
 
-                url.join(&path.as_str()).unwrap()
-            },
-        };
-
-        let url = <Option<Url> as Clone>::clone(&self.homeserver_url).unwrap().clone();
-        let _ = match &self
-            .resolver
-            .publish(key_pair, &url, Some(&target_url))
-        {
+        let url = <Option<Url> as Clone>::clone(&self.homeserver_url)
+            .unwrap()
+            .clone();
+        let _ = match &self.resolver.publish(key_pair, &url, Some(&target_url)) {
             Ok(_) => (),
             Err(e) => return Err(format!("Error publishing public key: {}", e)),
         };
@@ -66,9 +67,14 @@ impl Auth<'_> {
     }
 
     /// Login to an account at the config homeserver
-    pub fn login(&mut self, seed: &[u8; 32], relay_url: Option<&Url>) -> Result<String, String> {
+    pub fn login(
+        &mut self,
+        seed: &[u8; 32],
+        dht_relay_url: Option<&Url>,
+    ) -> Result<String, String> {
         let key_pair = &DeterministicKeyGen::generate(Some(seed));
-        let user_id = match self.send_user_root_signature(&SigType::Login, key_pair, relay_url) {
+        let user_id = match self.send_user_root_signature(&SigType::Login, key_pair, dht_relay_url)
+        {
             Ok(user_id) => user_id,
             Err(e) => return Err(format!("Error signing up: {}", e)),
         };
@@ -88,16 +94,14 @@ impl Auth<'_> {
             return Err("No homeserver found".to_string());
         }
 
-        let url = <Option<Url> as Clone>::clone(&self.homeserver_url).unwrap().clone();
-        let url = url.join(&format!("/mvp/session/{}", user_id).as_str()).unwrap();
+        let url = <Option<Url> as Clone>::clone(&self.homeserver_url)
+            .unwrap()
+            .clone();
+        let url = url
+            .join(&format!("/mvp/session/{}", user_id).as_str())
+            .unwrap();
 
-        match request(
-            Method::DELETE,
-            url,
-            &mut self.session_id,
-            None,
-            None,
-        ) {
+        match request(Method::DELETE, url, &mut self.session_id, None, None) {
             Ok(_) => Ok(()),
             Err(e) => return Err(format!("Error logging out: {}", e)),
         }
@@ -110,7 +114,9 @@ impl Auth<'_> {
             return Err("No homeserver found".to_string());
         }
 
-        let url = <Option<Url> as Clone>::clone(&self.homeserver_url).unwrap().clone();
+        let url = <Option<Url> as Clone>::clone(&self.homeserver_url)
+            .unwrap()
+            .clone();
         let url = url.join("/mvp/session").unwrap();
 
         match request(Method::GET, url.clone(), &mut self.session_id, None, None) {
@@ -135,7 +141,7 @@ impl Auth<'_> {
         &mut self,
         sig_type: &SigType,
         key_pair: &Keypair,
-        relay_url: Option<&Url>,
+        dht_relay_url: Option<&Url>,
     ) -> Result<String, String> {
         let challenge = self.get_challenge(&key_pair.public_key(), None);
         let signature = key_pair.sign(&challenge.unwrap().signable).to_string();
@@ -147,7 +153,7 @@ impl Auth<'_> {
         if self.homeserver_url.is_none() {
             self.homeserver_url = match self
                 .resolver
-                .resolve_homeserver(&key_pair.public_key(), relay_url)
+                .resolve_homeserver(&key_pair.public_key(), dht_relay_url)
             {
                 Ok(url) => Some(url),
                 Err(e) => return Err(format!("Error resolving homeserver: {}", e)),
@@ -159,11 +165,16 @@ impl Auth<'_> {
             SigType::Login => format!("/mvp/session/{}", user_id),
         };
 
-        let url = <Option<Url> as Clone>::clone(&self.homeserver_url).unwrap().clone();
+        let url = <Option<Url> as Clone>::clone(&self.homeserver_url)
+            .unwrap()
+            .clone();
         let url = url.join(path.as_str()).unwrap();
 
         let mut headers = HeaderMap::new();
-        headers.insert("Content-Type", "application/octet-stream".try_into().unwrap());
+        headers.insert(
+            "Content-Type",
+            "application/octet-stream".try_into().unwrap(),
+        );
         headers.insert("Content-Length", signature.len().try_into().unwrap());
 
         let response = request(
@@ -184,17 +195,19 @@ impl Auth<'_> {
     fn get_challenge(
         &mut self,
         public_key: &PublicKey,
-        relay_url: Option<&Url>,
+        dht_relay_url: Option<&Url>,
     ) -> Result<Challenge, String> {
         if self.homeserver_url.is_none() {
-            self.homeserver_url = match self.resolver.resolve_homeserver(&public_key, relay_url)
+            self.homeserver_url = match self.resolver.resolve_homeserver(&public_key, dht_relay_url)
             {
                 Ok(url) => Some(url),
                 Err(e) => return Err(format!("Error resolving homeserver: {}", e)),
             };
         };
 
-        let url = <Option<Url> as Clone>::clone(&self.homeserver_url).unwrap().clone();
+        let url = <Option<Url> as Clone>::clone(&self.homeserver_url)
+            .unwrap()
+            .clone();
         let url = url.join("/mvp/challenge").unwrap();
 
         match request(Method::GET, url.clone(), &mut self.session_id, None, None) {
