@@ -311,13 +311,10 @@ mod test {
 
         // TEST SIGNUP
         let user_id = auth.signup(seed_1, None).unwrap();
-        println!("User ID: {}", user_id);
-        println!("Session: {:?}", auth.session_id);
-        println!("Homeserver URL: {:?}", auth.homeserver_url);
-        // assert homeserver_url
-        // maybe assert session_id
-        // assert user_id
-        //
+        assert_eq!(user_id, user1_id);
+        assert_eq!(auth.homeserver_url, Some(Url::parse(&server.url()).unwrap()));
+        assert_eq!(auth.session_id, Some("123".to_string()));
+
         // TEST LOGIN
         // TEST SESSION
         // TEST LOGOUT
