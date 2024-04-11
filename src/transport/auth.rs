@@ -87,7 +87,7 @@ impl Auth<'_> {
     }
 
     /// Logout from a specific account at the config homeserver
-    pub fn logout(&mut self, user_id: &str) -> Result<(), String> {
+    pub fn logout(&mut self, user_id: &str) -> Result<String, String> {
         if self.session_id.is_none() {
             return Err("No session found".to_string());
         }
@@ -104,10 +104,7 @@ impl Auth<'_> {
             .unwrap();
 
         match request(Method::DELETE, url, &mut self.session_id, None, None) {
-            Ok(_) => {
-                &self.session_id.take();
-                Ok(())
-            },
+            Ok(_) => Ok(self.session_id.take().unwrap()),
             Err(e) => return Err(format!("Error logging out: {}", e)),
         }
     }
@@ -278,15 +275,15 @@ mod test {
         let send_user_root_signature_login_mock_params = HttpMockParams {
             method: &Method::PUT,
             path: path.as_str(),
-            headers: vec![("Set-Cookie", "sessionId=123")],
-            body: &b"ok".to_vec(),
+            headers: vec![("Set-Cookie", "sessionId=1234")],
             status: 200,
+            body: &b"ok".to_vec(),
         };
 
         let get_session_mock_params = HttpMockParams {
             method: &Method::GET,
             path: "/mvp/session",
-            headers: vec![("Set-Cookie", "sessionId=123")],
+            headers: vec![("Set-Cookie", "sessionId=12345")],
             body: &b"session".to_vec(), // TODO: proper session object
             status: 200,
         };
@@ -303,6 +300,7 @@ mod test {
         let server = setup_datastore(vec![
             get_challange_mock_params,
             send_user_root_signature_signup_mock_params,
+            send_user_root_signature_login_mock_params,
             get_session_mock_params,
             logout_mock_params,
         ]);
@@ -319,11 +317,16 @@ mod test {
         assert_eq!(auth.session_id, Some("123".to_string()));
 
         // TEST LOGOUT
-        let _ = auth.logout(&user_id).unwrap();
+        let session_id = auth.logout(&user_id).unwrap();
         assert_eq!(auth.session_id, None);
+        assert_eq!(session_id, "123");
 
+        // // TEST LOGIN
+        let user_id = auth.login(seed_1, None).unwrap();
+        assert_eq!(user_id, user1_id);
+        assert_eq!(auth.homeserver_url, Some(Url::parse(&server.url()).unwrap()));
+        assert_eq!(auth.session_id, Some("1234".to_string()));
 
-        // TEST LOGIN
         // TEST SESSION
     }
 }
