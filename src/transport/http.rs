@@ -49,10 +49,10 @@ mod tests {
     #[test]
     fn test_request() {
         let server = test_utils::setup_datastore(vec![test_utils::HttpMockParams {
-            method: "GET",
+            method: &Method::GET,
             path: "/test",
             status: 200,
-            body: "test",
+            body: &b"test".to_vec(),
             headers: vec![("Set-Cookie", "sessionId=123")],
         }]);
 
@@ -66,5 +66,6 @@ mod tests {
         assert_eq!(res.is_ok(), true);
         assert_eq!(session_id.is_some(), true);
         assert_eq!(session_id.unwrap(), "123");
+        assert_eq!(res.unwrap(), "test");
     }
 }
