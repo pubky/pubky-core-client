@@ -1,13 +1,10 @@
 use reqwest::blocking::Client;
-pub use reqwest::header::HeaderMap as HeaderMap;
-pub use reqwest::Method as Method;
+pub use reqwest::header::HeaderMap;
+pub use reqwest::Method;
 pub use reqwest::Url;
 
 // Have a hashmap homeserverUrl -> session_id
 // Q: how to clean it? -> delete manually
-//
-// IMO it is better for client to handle resolving and for http to handle sessions
-// HomeserverUrl + path vs path (including homeserverUrl)
 pub fn request(
     method: Method,
     path: Url,
@@ -47,17 +44,17 @@ pub fn request(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use mockito;
+    use crate::test_utils;
 
     #[test]
     fn test_request() {
-        let mut server = mockito::Server::new();
-        server
-            .mock("GET", "/test")
-            .with_status(200)
-            .with_header("Set-Cookie", "sessionId=123")
-            .with_body("test")
-            .create();
+        let server = test_utils::setup_datastore(vec![test_utils::HttpMockParams {
+            method: "GET",
+            path: "/test",
+            status: 200,
+            body: "test",
+            headers: vec![("Set-Cookie", "sessionId=123")],
+        }]);
 
         let mut session_id = None;
         let headers = HeaderMap::new();
