@@ -4,7 +4,8 @@ use std::collections::HashMap;
 
 pub struct Resolver<'a> {
     relay_url: Option<&'a Url>,
-    // NOTE: Cache is needed mostly for DHT lookups
+    // NOTE: Cache is needed mostly for DHT lookups. It will be implemented in pkarr v2
+    // So cache could be removed after update
     // TODO: add suport for different cache strategeies:
     // - read through
     // - read around
