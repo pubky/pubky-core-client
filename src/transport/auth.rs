@@ -313,7 +313,25 @@ mod test {
         assert_eq!(auth.session_id, None);
         assert_eq!(session_id, "123");
 
-        // // TEST LOGIN
+        // TEST SIGNUP AGAIN
+        let mut resolver = Resolver::new(None, Some(&testnet.bootstrap));
+        let mut auth = Auth::new(resolver, Some(Url::parse(&server.url()).unwrap()));
+
+        let user_id = auth.signup(seed, None).unwrap();
+        assert_eq!(user_id, user_id);
+        assert_eq!(
+            auth.homeserver_url,
+            Some(Url::parse(&server.url()).unwrap())
+        );
+        assert_eq!(auth.session_id, Some("123".to_string()));
+
+        // TEST LOGOUT
+        let session_id = auth.logout(&user_id).unwrap();
+        assert_eq!(auth.session_id, None);
+        assert_eq!(session_id, "123");
+
+
+        // TEST LOGIN
         let user_id = auth.login(seed, None).unwrap();
         assert_eq!(user_id, user_id);
         assert_eq!(
