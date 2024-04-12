@@ -46,19 +46,11 @@ impl Auth<'_> {
             };
         }
 
-        // XXX: this seems wrong, jsut home server url should be enough
-        let target_url = self
-            .homeserver_url
-            .clone()
-            .unwrap()
-            .join(&format!("/mvp/users/{}/pkarr", user_id).as_str())
-            .unwrap();
-
-        let url = self.homeserver_url.clone().unwrap();
-
-        // XXX
-        // let _ = match &self.resolver.publish(key_pair, &url, Some(&target_url)) {
-        let _ = match &self.resolver.publish(key_pair, &url, None) {
+        let _ = match &self.resolver.publish(
+            key_pair,
+            &self.homeserver_url.clone().unwrap(),
+            dht_relay_url,
+        ) {
             Ok(_) => (),
             Err(e) => return Err(format!("Error publishing public key: {}", e)),
         };
@@ -301,14 +293,19 @@ mod test {
         ]);
 
         let mut resolver = Resolver::new(None, Some(&testnet.bootstrap));
-        let _ = resolver.publish(&key_pair, &Url::parse(&server.url()).unwrap(), None).unwrap();
+        let _ = resolver
+            .publish(&key_pair, &Url::parse(&server.url()).unwrap(), None)
+            .unwrap();
 
         let mut auth = Auth::new(resolver, None);
 
         // TEST SIGNUP
         let user_id = auth.signup(seed, None).unwrap();
         assert_eq!(user_id, user_id);
-        assert_eq!(auth.homeserver_url, Some(Url::parse(&server.url()).unwrap()));
+        assert_eq!(
+            auth.homeserver_url,
+            Some(Url::parse(&server.url()).unwrap())
+        );
         assert_eq!(auth.session_id, Some("123".to_string()));
 
         // TEST LOGOUT
@@ -319,13 +316,19 @@ mod test {
         // // TEST LOGIN
         let user_id = auth.login(seed, None).unwrap();
         assert_eq!(user_id, user_id);
-        assert_eq!(auth.homeserver_url, Some(Url::parse(&server.url()).unwrap()));
+        assert_eq!(
+            auth.homeserver_url,
+            Some(Url::parse(&server.url()).unwrap())
+        );
         assert_eq!(auth.session_id, Some("1234".to_string()));
 
         // TEST SESSION
         let session = auth.session().unwrap();
         assert_eq!(session, "session".to_string());
         assert_eq!(auth.session_id, Some("12345".to_string()));
-        assert_eq!(auth.homeserver_url, Some(Url::parse(&server.url()).unwrap()));
+        assert_eq!(
+            auth.homeserver_url,
+            Some(Url::parse(&server.url()).unwrap())
+        );
     }
 }
