@@ -1,3 +1,21 @@
+/// This is the pubky client class. It is used for accessing pubky infrastructure for CRUD options
+/// over user's data in pubky network.
+///
+/// Client accepts optional seed for pubky key generation.
+/// It accepts optional homeserver URL and relay URL.
+///
+/// It has as a cache which matches userId to <homeserver_url, sesison_id>.
+///
+/// It has encapsulates an instance of a resolver to publish user's identity to the network, as
+/// well as to lookup other user's homeservers
+///
+///
+/// The CRUD operations for homeserver are performed using http requests.
+
+
+
+
+
 // use std::collections::HashMap;
 // use z32::encode;
 //
