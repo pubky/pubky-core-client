@@ -61,7 +61,7 @@ impl Auth<'_> {
         return Ok(user_id.to_string());
     }
 
-    /// Login to an account at the config homeserver
+    /// Login to an account at the homeserver
     pub fn login(
         &mut self,
         seed: &[u8; 32],
