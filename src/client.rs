@@ -1,6 +1,11 @@
 use std::collections::HashMap;
 
-use crate::transport::{crypto, auth::Auth, resolver::Resolver, http::{Url, Method, request}};
+use crate::transport::{
+    auth::Auth,
+    crypto,
+    http::{request, Method, Url},
+    resolver::Resolver,
+};
 
 /// This is the pubky client class. It is used for accessing pubky infrastructure for CRUD options
 /// over user's data in pubky network.
@@ -16,49 +21,51 @@ use crate::transport::{crypto, auth::Auth, resolver::Resolver, http::{Url, Metho
 ///
 /// The CRUD operations for homeserver are performed using http requests.
 
-
-
-pub struct Client {
+pub struct Client<'a> {
+    pub homeserver_url: Url, // for self
     seed: [u8; 32],
-    homeservers_cache: HashMap<String, (Url, String)>,
-    homeserver_url: Url,
+    homeservers_cache: HashMap<String, Auth<'a>>, // for others
 }
 
-impl Client<> {
-//     pub fn new(homeserverId: &str, config: &ClientConfig) -> Client {
-//         let relay = config.relay.unwrap_or("relay.pkarr.org");
-//         let mut homeserver_url = config.homeserver_url.unwrap();
-//         let mut homeserver_id = homeserver_id;
-//         if homeserver_id.starts_with("http") {
-//             homeserver_url = homeserver_id;
-//         } else {
-//             let public_key = PublicKey::from_str(homeserver_id).unwrap();
-//             homeserver_url = pkkar_lookup(public_key);
-//             homeserver_id = encode(homeserver_id);
-//         };
-//         // TODO let repos
-//
-//         Client {
-//             session_id: "",
-//             // TODO: repos: repos,
-//             homeserver_url: homeserver_url,
-//             homeserver_id: homeserver_id,
-//             relay: relay,
-//             homeservers_cache: HashMap::new(),
-//         }
-//     }
-    pub fn new(seed: Option<[u8; 32]>, homeserver_url: Option<Url>, dht_relay: Option<Url>, bootstrap: Option<& Vec<String>>) -> Client {
+impl Client<'_> {
+    //     pub fn new(homeserverId: &str, config: &ClientConfig) -> Client {
+    //         let relay = config.relay.unwrap_or("relay.pkarr.org");
+    //         let mut homeserver_url = config.homeserver_url.unwrap();
+    //         let mut homeserver_id = homeserver_id;
+    //         if homeserver_id.starts_with("http") {
+    //             homeserver_url = homeserver_id;
+    //         } else {
+    //             let public_key = PublicKey::from_str(homeserver_id).unwrap();
+    //             homeserver_url = pkkar_lookup(public_key);
+    //             homeserver_id = encode(homeserver_id);
+    //         };
+    //         // TODO let repos
+    //
+    //         Client {
+    //             session_id: "",
+    //             // TODO: repos: repos,
+    //             homeserver_url: homeserver_url,
+    //             homeserver_id: homeserver_id,
+    //             relay: relay,
+    //             homeservers_cache: HashMap::new(),
+    //         }
+    //     }
+    pub fn new<'a>(
+        seed: Option<[u8; 32]>,
+        homeserver_url: Option<Url>,
+        dht_relay: Option<&'a Url>,
+        bootstrap: Option<&'a Vec<String>>,
+    ) -> Client<'a> {
         let seed = seed.unwrap_or(crypto::random_bytes(32).try_into().unwrap());
 
-        let resolver = Resolver::new(dht_relay.as_ref(), bootstrap);
+        let resolver = Resolver::new(dht_relay, bootstrap);
         let mut auth = Auth::new(resolver, homeserver_url);
 
         let user_id = auth.signup(&seed, None).unwrap();
-        let homeserver_url = auth.homeserver_url.unwrap();
-        let session_id = auth.session_id.unwrap();
+        let homeserver_url = auth.homeserver_url.clone().unwrap();
 
         let mut homeservers_cache = HashMap::new();
-        homeservers_cache.insert(user_id, (homeserver_url.clone(), session_id));
+        homeservers_cache.insert(user_id, auth);
 
         Client {
             seed,
@@ -71,59 +78,72 @@ impl Client<> {
 
     /// Create repository for user
     pub fn create(&mut self, user_id: &str, repo_name: &str) -> Result<(), String> {
-        let url = &self.homeservers_cache.get(user_id).unwrap().0;
-        let url = url.join(&format!("/mvp/users/{}/repos/{}", user_id, repo_name)).unwrap();
+        let url = &self
+            .homeservers_cache
+            .get(user_id)
+            .unwrap()
+            .homeserver_url
+            .clone()
+            .unwrap();
+        let url = url
+            .join(&format!("/mvp/users/{}/repos/{}", user_id, repo_name))
+            .unwrap();
 
-        let mut session_id = &self.homeservers_cache.get_mut(user_id).unwrap().1;
         // XXX: make sure that it will update session in the cache preferably by ref
-        match request(Method::PUT, url.clone(), &mut Some(session_id.to_string()), None, None) {
+        match request(
+            Method::PUT,
+            url.clone(),
+            &mut self.homeservers_cache.get_mut(user_id).unwrap().session_id,
+            None,
+            None,
+        ) {
             Ok(_) => Ok(()),
             Err(e) => return Err(e),
         }
     }
 
-//     // get, delete, list, query
-//     /// Put data into user's repository and return URL to this repo
-//     pub fn put (&self, user_id:&str, repo_name: &str, path: &str, payload: &str) -> Result<Url, String> {
-//         Ok()
-//     }
-//
-//     /// Get data from user's repository and return it as a JSON(?)
-//     pub fn get (&self, user_id: &str, repo_name: &str, path: &str) -> Result<Data, String> { }
-//
-//     /// Delete data from user's repository
-//     pub fn delete (&self, user_id: &str, repo_name: &str, path: &str) -> Result<_, String> { }
-//
-//     /// List data in user's repository
-//     /*
-//     ListOption {
-//          reverse: bool,
-//          offset: usize,
-//          limit: usize,
-//     }
-//     */
-//     pub fn list (&self, user_id: &str, repo_name: &str, path: &str, opts: Option<ListOption>) -> Result<Vec<String>, String> { }
-//
-//
-//     /// Query data in user's repository
-//     /*
-//     // Maybe can repurpose ListOption
-//     QueryOptions {
-//          reverse: bool,
-//          start: usize,
-//          end: usize,
-//          limit: usize,
-//          reverse: bool,
-//     }
-//     */
-//     pub fn query (&self, user_id: &str, repo_name: &str, query: Option<QueryOptions>) -> Result<Vec<String>, String> { }
+    //     // get, delete, list, query
+    //     /// Put data into user's repository and return URL to this repo
+    //     pub fn put (&self, user_id:&str, repo_name: &str, path: &str, payload: &str) -> Result<Url, String> {
+    //         Ok()
+    //     }
+    //
+    //     /// Get data from user's repository and return it as a JSON(?)
+    //     pub fn get (&self, user_id: &str, repo_name: &str, path: &str) -> Result<Data, String> { }
+    //
+    //     /// Delete data from user's repository
+    //     pub fn delete (&self, user_id: &str, repo_name: &str, path: &str) -> Result<_, String> { }
+    //
+    //     /// List data in user's repository
+    //     /*
+    //     ListOption {
+    //          reverse: bool,
+    //          offset: usize,
+    //          limit: usize,
+    //     }
+    //     */
+    //     pub fn list (&self, user_id: &str, repo_name: &str, path: &str, opts: Option<ListOption>) -> Result<Vec<String>, String> { }
+    //
+    //
+    //     /// Query data in user's repository
+    //     /*
+    //     // Maybe can repurpose ListOption
+    //     QueryOptions {
+    //          reverse: bool,
+    //          start: usize,
+    //          end: usize,
+    //          limit: usize,
+    //          reverse: bool,
+    //     }
+    //     */
+    //     pub fn query (&self, user_id: &str, repo_name: &str, query: Option<QueryOptions>) -> Result<Vec<String>, String> { }
 }
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::test_utils::{setup_datastore, HttpMockParams};
-    use crate::transport::crypto::{Keypair, DeterministicKeyGen};
     use crate::transport::challenge::Challenge;
+    use crate::transport::crypto::{DeterministicKeyGen, Keypair};
     use mainline::dht::Testnet;
     use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -134,7 +154,6 @@ mod tests {
             .expect("Time went backwards")
             .as_secs()
     }
-
 
     #[test]
     fn test_client_new() {
@@ -167,7 +186,6 @@ mod tests {
             send_user_root_signature_signup_mock_params,
         ]);
 
-
         let mut resolver = Resolver::new(None, Some(&testnet.bootstrap));
         let _ = resolver
             .publish(&key_pair, &Url::parse(&server.url()).unwrap(), None)
@@ -176,8 +194,18 @@ mod tests {
         let client = Client::new(Some(seed.clone()), None, None, Some(&testnet.bootstrap));
 
         assert_eq!(client.homeservers_cache.len(), 1);
-        assert_eq!(client.homeservers_cache.get(&user_id).unwrap().0, Url::parse(&server.url()).unwrap());
-        assert_eq!(client.homeservers_cache.get(&user_id).unwrap().1.clone(), "123".to_string());
+        assert_eq!(
+            client
+                .homeservers_cache
+                .get(&user_id)
+                .unwrap()
+                .homeserver_url,
+            Some(Url::parse(&server.url()).unwrap())
+        );
+        assert_eq!(
+            client.homeservers_cache.get(&user_id).unwrap().session_id,
+            Some("123".to_string())
+        );
     }
 
     #[test]
@@ -223,7 +251,6 @@ mod tests {
             create_repo_mock_params,
         ]);
 
-
         let mut resolver = Resolver::new(None, Some(&testnet.bootstrap));
         let _ = resolver
             .publish(&key_pair, &Url::parse(&server.url()).unwrap(), None)
@@ -235,7 +262,17 @@ mod tests {
 
         assert_eq!(result, Ok(()));
         assert_eq!(client.homeservers_cache.len(), 1);
-        assert_eq!(client.homeservers_cache.get(&user_id).unwrap().0, Url::parse(&server.url()).unwrap());
-        assert_eq!(client.homeservers_cache.get(&user_id).unwrap().1.clone(), "1234".to_string());
+        assert_eq!(
+            client
+                .homeservers_cache
+                .get(&user_id)
+                .unwrap()
+                .homeserver_url,
+            Some(Url::parse(&server.url()).unwrap())
+        );
+        assert_eq!(
+            client.homeservers_cache.get(&user_id).unwrap().session_id,
+            Some("1234".to_string())
+        );
     }
 }
