@@ -97,7 +97,7 @@ impl Auth<'_> {
             .unwrap();
 
         match request(Method::DELETE, url, &mut self.session_id, None, None) {
-            Ok(_) => Ok(self.session_id.take().unwrap()),
+            Ok(_) => Ok(self.session_id.take().unwrap().clone()),
             Err(e) => return Err(format!("Error logging out: {}", e)),
         }
     }
@@ -221,7 +221,6 @@ impl Auth<'_> {
 mod test {
     use super::*;
     use crate::test_utils::{setup_datastore, HttpMockParams};
-    use crate::transport::crypto;
     use mainline::dht::Testnet;
     use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -303,48 +302,52 @@ mod test {
 
         // TEST SIGNUP
         let user_id = auth.signup(seed, None).unwrap();
+        let session_id = "123".to_string();
         assert_eq!(user_id, user_id);
         assert_eq!(
             auth.homeserver_url,
             Some(Url::parse(&server.url()).unwrap())
         );
-        assert_eq!(auth.session_id, Some("123".to_string()));
+        assert_eq!(auth.session_id, Some(session_id));
 
         // TEST LOGOUT
-        let session_id = auth.logout(&user_id).unwrap();
+        let res_session_id = auth.logout(&user_id).unwrap();
         assert_eq!(auth.session_id, None);
-        assert_eq!(session_id, "123");
+        assert_eq!(res_session_id, "123");
 
         // TEST SIGNUP AGAIN
         let resolver = Resolver::new(None, Some(&testnet.bootstrap));
         let mut auth = Auth::new(resolver, Some(Url::parse(&server.url()).unwrap()));
 
         let user_id = auth.signup(seed, None).unwrap();
+        let session_id = "123".to_string();
         assert_eq!(user_id, user_id);
         assert_eq!(
             auth.homeserver_url,
             Some(Url::parse(&server.url()).unwrap())
         );
-        assert_eq!(auth.session_id, Some("123".to_string()));
+        assert_eq!(auth.session_id, Some(session_id));
 
         // TEST LOGOUT
-        let session_id = auth.logout(&user_id).unwrap();
+        let res_session_id = auth.logout(&user_id).unwrap();
         assert_eq!(auth.session_id, None);
-        assert_eq!(session_id, "123");
+        assert_eq!(res_session_id, "123");
 
         // TEST LOGIN
-        let user_id = auth.login(seed, None).unwrap();
-        assert_eq!(user_id, user_id);
+        let res_user_id = auth.login(seed, None).unwrap();
+        let session_id = "1234".to_string();
+        assert_eq!(user_id, res_user_id);
         assert_eq!(
             auth.homeserver_url,
             Some(Url::parse(&server.url()).unwrap())
         );
-        assert_eq!(auth.session_id, Some("1234".to_string()));
+        assert_eq!(auth.session_id, Some(session_id));
 
         // TEST SESSION
         let session = auth.session().unwrap();
+        let session_id = "12345".to_string();
         assert_eq!(session, "session".to_string());
-        assert_eq!(auth.session_id, Some("12345".to_string()));
+        assert_eq!(auth.session_id, Some(session_id));
         assert_eq!(
             auth.homeserver_url,
             Some(Url::parse(&server.url()).unwrap())
