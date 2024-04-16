@@ -153,9 +153,35 @@ impl Client<'_> {
             Err(e) => return Err(e),
         }
     }
-    //
-    //     /// Delete data from user's repository
-    //     pub fn delete (&self, user_id: &str, repo_name: &str, path: &str) -> Result<_, String> { }
+
+    /// Delete data from user's repository
+    pub fn delete(&mut self, user_id: &str, repo_name: &str, path: &str) -> Result<(), String> {
+        let url = &self
+            .homeservers_cache
+            .get(user_id)
+            .unwrap()
+            .homeserver_url
+            .clone()
+            .unwrap()
+            .join(&format!(
+                "/mvp/users/{}/repos/{}/{}",
+                user_id, repo_name, path
+            ))
+            .unwrap();
+
+        let response = request(
+            Method::DELETE,
+            url.clone(),
+            &mut self.homeservers_cache.get_mut(user_id).unwrap().session_id,
+            None,
+            None,
+        );
+
+        match response {
+            Ok(_) => Ok(()),
+            Err(e) => return Err(e),
+        }
+    }
     //
     //     /// List data in user's repository
     //     /*
@@ -444,6 +470,74 @@ mod tests {
         let result = client.get(&user_id, repo_name, &folder_path);
 
         assert_eq!(result.unwrap(), "totally ok".to_string());
+        assert_eq!(client.homeservers_cache.len(), 1);
+        assert_eq!(
+            client
+                .homeservers_cache
+                .get(&user_id)
+                .unwrap()
+                .homeserver_url,
+            Some(Url::parse(&server.url()).unwrap())
+        );
+        assert_eq!(
+            client.homeservers_cache.get(&user_id).unwrap().session_id,
+            Some("1234".to_string())
+        );
+    }
+
+    fn test_client_delete() {
+        let testnet = Testnet::new(10);
+
+        let challenge = Challenge::create(now() + 1000, None);
+
+        let seed = b"it is a seed for key generation!";
+        let key_pair: Keypair = DeterministicKeyGen::generate(Some(seed));
+        let user_id = key_pair.to_z32();
+
+        let get_challange_mock_params = HttpMockParams {
+            method: &Method::GET,
+            path: "/mvp/challenge",
+            body: &challenge.serialize(),
+            status: 200,
+            headers: vec![],
+        };
+
+        let path = format!("/mvp/users/{}/pkarr", user_id);
+        let send_user_root_signature_signup_mock_params = HttpMockParams {
+            method: &Method::PUT,
+            path: path.as_str(),
+            headers: vec![("Set-Cookie", "sessionId=123")],
+            status: 200,
+            body: &b"ok".to_vec(),
+        };
+
+        let repo_name = "test_repo";
+        let folder_path = "test_path";
+        let path = format!("/mvp/users/{}/repos/{}/{}", user_id, repo_name, folder_path);
+        let create_repo_mock_params = HttpMockParams {
+            method: &Method::DELETE,
+            path: path.as_str(),
+            headers: vec![("Set-Cookie", "sessionId=1234")],
+            status: 200,
+            body: &b"totally ok".to_vec(),
+        };
+
+        let server = setup_datastore(vec![
+            get_challange_mock_params,
+            send_user_root_signature_signup_mock_params,
+            create_repo_mock_params,
+        ]);
+
+        let mut resolver = Resolver::new(None, Some(&testnet.bootstrap));
+        let _ = resolver
+            .publish(&key_pair, &Url::parse(&server.url()).unwrap(), None)
+            .unwrap();
+
+        let mut client = Client::new(Some(seed.clone()), None, None, Some(&testnet.bootstrap));
+
+        let result = client.delete(&user_id, repo_name, &folder_path);
+
+        assert!(result.is_ok());
         assert_eq!(client.homeservers_cache.len(), 1);
         assert_eq!(
             client
