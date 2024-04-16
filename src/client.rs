@@ -1,10 +1,14 @@
+use std::collections::HashMap;
+
+use crate::transport::{crypto, auth::Auth, resolver::Resolver, http::Url};
+
 /// This is the pubky client class. It is used for accessing pubky infrastructure for CRUD options
 /// over user's data in pubky network.
 ///
 /// Client accepts optional seed for pubky key generation.
 /// It accepts optional homeserver URL and relay URL.
 ///
-/// It has as a cache which matches userId to <homeserver_url, sesison_id>.
+/// It has as a cache which matches {<userId>:(<homeserver_url, sesison_id>)}.
 ///
 /// It has encapsulates an instance of a resolver to publish user's identity to the network, as
 /// well as to lookup other user's homeservers
@@ -14,26 +18,33 @@
 
 
 
+pub struct Client {
+    seed: [u8; 32],
+    homeservers_cache: HashMap<String, (Url, String)>,
+    homeserver_url: Url,
+}
 
+impl Client {
+    pub fn new(seed: Option<[u8; 32]>, homeserver_url: Option<Url>, dht_relay: Option<Url>) -> Client {
+        let seed = seed.unwrap_or(crypto::random_bytes(32).try_into().unwrap());
 
-// use std::collections::HashMap;
-// use z32::encode;
-//
-// struct Client {
-//   session_id: &str,
-//   homeserver_url: &str,
-//   homeserver_id: &str,
-//   relay: &str,
-//   homeservers_cache: HashMap<String, String>,
-// }
-//
-// struct ClientConfig {
-//   homeserver_url: Option<String>,
-//   relay: Option<String>,
-//   relay: Option<String>,
-// }
-//
-// impl Client {
+        let resolver = Resolver::new(dht_relay.as_ref(), None);
+        let mut auth = Auth::new(resolver, homeserver_url);
+
+        let user_id = auth.signup(&seed, None).unwrap();
+        let homeserver_url = auth.homeserver_url.unwrap();
+        let session_id = auth.session_id.unwrap();
+
+        let mut homeservers_cache = HashMap::new();
+        homeservers_cache.insert(user_id, (homeserver_url.clone(), session_id));
+
+        Client {
+            seed,
+            homeservers_cache,
+            homeserver_url,
+        }
+    }
+
 //     pub fn new(homeserverId: &str, config: &ClientConfig) -> Client {
 //         let relay = config.relay.unwrap_or("relay.pkarr.org");
 //         let mut homeserver_url = config.homeserver_url.unwrap();
@@ -98,4 +109,4 @@
 //     }
 //     */
 //     pub fn query (&self, user_id: &str, repo_name: &str, query: Option<QueryOptions>) -> Result<Vec<String>, String> { }
-// }
+}
