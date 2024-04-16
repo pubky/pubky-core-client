@@ -46,6 +46,7 @@ impl Auth<'_> {
             };
         }
 
+        // Re-publish the homeserver url
         let _ = match &self.resolver.publish(
             key_pair,
             &self.homeserver_url.clone().unwrap(),
@@ -224,6 +225,7 @@ mod test {
     use mainline::dht::Testnet;
     use std::time::{SystemTime, UNIX_EPOCH};
 
+    // TODO: move to helper
     fn now() -> u64 {
         let now = SystemTime::now();
         now.duration_since(UNIX_EPOCH)
@@ -314,7 +316,7 @@ mod test {
         assert_eq!(session_id, "123");
 
         // TEST SIGNUP AGAIN
-        let mut resolver = Resolver::new(None, Some(&testnet.bootstrap));
+        let resolver = Resolver::new(None, Some(&testnet.bootstrap));
         let mut auth = Auth::new(resolver, Some(Url::parse(&server.url()).unwrap()));
 
         let user_id = auth.signup(seed, None).unwrap();
@@ -329,7 +331,6 @@ mod test {
         let session_id = auth.logout(&user_id).unwrap();
         assert_eq!(auth.session_id, None);
         assert_eq!(session_id, "123");
-
 
         // TEST LOGIN
         let user_id = auth.login(seed, None).unwrap();
