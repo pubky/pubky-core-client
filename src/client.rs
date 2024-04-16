@@ -22,34 +22,12 @@ use crate::transport::{
 /// The CRUD operations for homeserver are performed using http requests.
 
 pub struct Client<'a> {
-    pub homeserver_url: Url, // for self
+    pub homeserver_url: Url, // own homeserver
     seed: [u8; 32],
-    homeservers_cache: HashMap<String, Auth<'a>>, // for others
+    homeservers_cache: HashMap<String, Auth<'a>>, // homervers of others
 }
 
 impl Client<'_> {
-    //     pub fn new(homeserverId: &str, config: &ClientConfig) -> Client {
-    //         let relay = config.relay.unwrap_or("relay.pkarr.org");
-    //         let mut homeserver_url = config.homeserver_url.unwrap();
-    //         let mut homeserver_id = homeserver_id;
-    //         if homeserver_id.starts_with("http") {
-    //             homeserver_url = homeserver_id;
-    //         } else {
-    //             let public_key = PublicKey::from_str(homeserver_id).unwrap();
-    //             homeserver_url = pkkar_lookup(public_key);
-    //             homeserver_id = encode(homeserver_id);
-    //         };
-    //         // TODO let repos
-    //
-    //         Client {
-    //             session_id: "",
-    //             // TODO: repos: repos,
-    //             homeserver_url: homeserver_url,
-    //             homeserver_id: homeserver_id,
-    //             relay: relay,
-    //             homeservers_cache: HashMap::new(),
-    //         }
-    //     }
     pub fn new<'a>(
         seed: Option<[u8; 32]>,
         homeserver_url: Option<Url>,
@@ -84,12 +62,10 @@ impl Client<'_> {
             .unwrap()
             .homeserver_url
             .clone()
-            .unwrap();
-        let url = url
+            .unwrap()
             .join(&format!("/mvp/users/{}/repos/{}", user_id, repo_name))
             .unwrap();
 
-        // XXX: make sure that it will update session in the cache preferably by ref
         match request(
             Method::PUT,
             url.clone(),
@@ -102,11 +78,10 @@ impl Client<'_> {
         }
     }
 
-    //     // get, delete, list, query
-    //     /// Put data into user's repository and return URL to this repo
-    //     pub fn put (&self, user_id:&str, repo_name: &str, path: &str, payload: &str) -> Result<Url, String> {
-    //         Ok()
-    //     }
+        // /// Put data into user's repository and return URL to this repo
+        // pub fn put (&self, user_id:&str, repo_name: &str, path: &str, payload: &str) -> Result<Url, String> {
+        //     Ok()
+        // }
     //
     //     /// Get data from user's repository and return it as a JSON(?)
     //     pub fn get (&self, user_id: &str, repo_name: &str, path: &str) -> Result<Data, String> { }
