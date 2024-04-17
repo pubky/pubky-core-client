@@ -285,51 +285,24 @@ mod tests {
     #[test]
     fn test_client_put() {
         let testnet = Testnet::new(10);
-
-        let challenge = Challenge::create(now() + 1000, None);
-
         let seed = b"it is a seed for key generation!";
+
         let key_pair: Keypair = DeterministicKeyGen::generate(Some(seed));
         let user_id = key_pair.to_z32();
 
-        let get_challange_mock_params = HttpMockParams {
-            method: &Method::GET,
-            path: "/mvp/challenge",
-            body: &challenge.serialize(),
-            status: 200,
-            headers: vec![],
-        };
-
-        let path = format!("/mvp/users/{}/pkarr", user_id);
-        let send_user_root_signature_signup_mock_params = HttpMockParams {
-            method: &Method::PUT,
-            path: path.as_str(),
-            headers: vec![("Set-Cookie", "sessionId=123")],
-            status: 200,
-            body: &b"ok".to_vec(),
-        };
-
         let repo_name = "test_repo";
         let folder_path = "test_path";
-        let path = format!("/mvp/users/{}/repos/{}/{}", user_id, repo_name, folder_path);
-        let create_repo_mock_params = HttpMockParams {
-            method: &Method::PUT,
-            path: path.as_str(),
-            headers: vec![("Set-Cookie", "sessionId=1234")],
-            status: 200,
-            body: &b"very ok".to_vec(),
-        };
+        let server = create_server_for_data(
+            user_id.clone(),
+            "test_repo".to_string(),
+            "test_path".to_string(),
+        );
 
-        let server = create_server(vec![
-            get_challange_mock_params,
-            send_user_root_signature_signup_mock_params,
-            create_repo_mock_params,
-        ]);
-
-        let mut resolver = Resolver::new(None, Some(&testnet.bootstrap));
-        let _ = resolver
-            .publish(&key_pair, &Url::parse(&server.url()).unwrap(), None)
-            .unwrap();
+        let _ = publish_url(
+            &key_pair,
+            &Url::parse(&server.url()).unwrap(),
+            &testnet.bootstrap,
+        );
 
         let mut client = Client::new(Some(seed.clone()), None, None, Some(&testnet.bootstrap));
 
@@ -337,7 +310,12 @@ mod tests {
 
         assert_eq!(
             result.unwrap(),
-            Url::parse(&server.url()).unwrap().join(&path).unwrap()
+            Url::parse(&server.url())
+                .unwrap()
+                .join(
+                    format!("/mvp/users/{}/repos/{}/{}", user_id, repo_name, folder_path).as_str()
+                )
+                .unwrap()
         );
         assert_eq!(client.homeservers_cache.len(), 1);
         assert_eq!(
@@ -357,56 +335,32 @@ mod tests {
     fn test_client_get() {
         let testnet = Testnet::new(10);
 
-        let challenge = Challenge::create(now() + 1000, None);
-
         let seed = b"it is a seed for key generation!";
         let key_pair: Keypair = DeterministicKeyGen::generate(Some(seed));
         let user_id = key_pair.to_z32();
 
-        let get_challange_mock_params = HttpMockParams {
-            method: &Method::GET,
-            path: "/mvp/challenge",
-            body: &challenge.serialize(),
-            status: 200,
-            headers: vec![],
-        };
-
-        let path = format!("/mvp/users/{}/pkarr", user_id);
-        let send_user_root_signature_signup_mock_params = HttpMockParams {
-            method: &Method::PUT,
-            path: path.as_str(),
-            headers: vec![("Set-Cookie", "sessionId=123")],
-            status: 200,
-            body: &b"ok".to_vec(),
-        };
-
         let repo_name = "test_repo";
         let folder_path = "test_path";
-        let path = format!("/mvp/users/{}/repos/{}/{}", user_id, repo_name, folder_path);
-        let create_repo_mock_params = HttpMockParams {
-            method: &Method::GET,
-            path: path.as_str(),
-            headers: vec![("Set-Cookie", "sessionId=1234")],
-            status: 200,
-            body: &b"totally ok".to_vec(),
-        };
+        let data = "test_payload";
 
-        let server = create_server(vec![
-            get_challange_mock_params,
-            send_user_root_signature_signup_mock_params,
-            create_repo_mock_params,
-        ]);
+        let server = create_server_for_get_data(
+            user_id.clone(),
+            repo_name.to_string(),
+            folder_path.to_string(),
+            data.to_string(),
+        );
 
-        let mut resolver = Resolver::new(None, Some(&testnet.bootstrap));
-        let _ = resolver
-            .publish(&key_pair, &Url::parse(&server.url()).unwrap(), None)
-            .unwrap();
+        let _ = publish_url(
+            &key_pair,
+            &Url::parse(&server.url()).unwrap(),
+            &testnet.bootstrap,
+        );
 
         let mut client = Client::new(Some(seed.clone()), None, None, Some(&testnet.bootstrap));
 
         let result = client.get(&user_id, repo_name, &folder_path);
 
-        assert_eq!(result.unwrap(), "totally ok".to_string());
+        assert_eq!(result.unwrap(), data.to_string());
         assert_eq!(client.homeservers_cache.len(), 1);
         assert_eq!(
             client
