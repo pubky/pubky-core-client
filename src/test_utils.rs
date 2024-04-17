@@ -9,7 +9,7 @@ pub struct HttpMockParams<'a> {
     pub headers: Vec<(&'a str, &'a str)>,
 }
 
-pub fn setup_datastore(params: Vec<HttpMockParams>) -> mockito::ServerGuard {
+pub fn create_server(params: Vec<HttpMockParams>) -> mockito::ServerGuard {
     let mut server = mockito::Server::new();
 
     for param in params {

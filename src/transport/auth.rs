@@ -220,7 +220,7 @@ impl Auth<'_> {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::test_utils::{setup_datastore, HttpMockParams};
+    use crate::test_utils::{create_server, HttpMockParams};
     use mainline::dht::Testnet;
     use std::time::{SystemTime, UNIX_EPOCH};
     use crate::utils::now;
@@ -278,7 +278,7 @@ mod test {
             headers: vec![],
         };
 
-        let server = setup_datastore(vec![
+        let server = create_server(vec![
             get_challange_mock_params,
             send_user_root_signature_signup_mock_params,
             send_user_root_signature_login_mock_params,

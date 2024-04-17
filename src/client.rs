@@ -210,7 +210,7 @@ impl Client<'_> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::test_utils::{setup_datastore, HttpMockParams};
+    use crate::test_utils::{create_server, HttpMockParams};
     use crate::transport::challenge::Challenge;
     use crate::transport::crypto::{DeterministicKeyGen, Keypair};
     use mainline::dht::Testnet;
@@ -242,7 +242,7 @@ mod tests {
             body: &b"ok".to_vec(),
         };
 
-        let server = setup_datastore(vec![
+        let server = create_server(vec![
             get_challange_mock_params,
             send_user_root_signature_signup_mock_params,
         ]);
@@ -306,7 +306,7 @@ mod tests {
             body: &b"very ok".to_vec(),
         };
 
-        let server = setup_datastore(vec![
+        let server = create_server(vec![
             get_challange_mock_params,
             send_user_root_signature_signup_mock_params,
             put_folder_mock_params,
@@ -375,7 +375,7 @@ mod tests {
             body: &b"very ok".to_vec(),
         };
 
-        let server = setup_datastore(vec![
+        let server = create_server(vec![
             get_challange_mock_params,
             send_user_root_signature_signup_mock_params,
             create_repo_mock_params,
@@ -446,7 +446,7 @@ mod tests {
             body: &b"totally ok".to_vec(),
         };
 
-        let server = setup_datastore(vec![
+        let server = create_server(vec![
             get_challange_mock_params,
             send_user_root_signature_signup_mock_params,
             create_repo_mock_params,
@@ -514,7 +514,7 @@ mod tests {
             body: &b"totally ok".to_vec(),
         };
 
-        let server = setup_datastore(vec![
+        let server = create_server(vec![
             get_challange_mock_params,
             send_user_root_signature_signup_mock_params,
             create_repo_mock_params,
