@@ -52,6 +52,19 @@ impl Client<'_> {
         }
     }
 
+    /* GENERAL LOGIC */
+
+    /// Generate a new key pair
+    pub fn generate_keypair(&self) -> crypto::Keypair {
+        crypto::DeterministicKeyGen::generate(Some(&self.seed))
+    }
+
+    /// Get user id
+    pub fn get_user_id(&self) -> String {
+        let keypair = self.generate_keypair();
+        keypair.to_z32()
+    }
+
     /* "REPOS" RELATED LOGIC */
 
     /// Create repository for user
