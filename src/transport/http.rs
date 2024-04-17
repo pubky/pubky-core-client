@@ -48,13 +48,14 @@ mod tests {
 
     #[test]
     fn test_request() {
-        let server = test_utils::setup_datastore(vec![test_utils::HttpMockParams {
+        let dummy_test_mock_params = test_utils::HttpMockParams {
             method: &Method::GET,
             path: "/test",
             status: 200,
             body: &b"test".to_vec(),
             headers: vec![("Set-Cookie", "sessionId=123")],
-        }]);
+        };
+        let server = test_utils::setup_datastore(vec![dummy_test_mock_params]);
 
         let mut session_id = None;
         let headers = HeaderMap::new();

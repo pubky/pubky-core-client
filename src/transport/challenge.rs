@@ -1,8 +1,6 @@
 use crate::transport::crypto;
 use crate::utils::now;
 
-use std::time::{SystemTime, UNIX_EPOCH};
-
 #[derive(Debug)]
 pub struct Challenge {
     pub value: [u8; 32],

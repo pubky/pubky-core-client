@@ -216,7 +216,6 @@ mod tests {
     use mainline::dht::Testnet;
     use crate::utils::now;
 
-    // TODO: move to helper
     #[test]
     fn test_client_new() {
         let testnet = Testnet::new(10);
