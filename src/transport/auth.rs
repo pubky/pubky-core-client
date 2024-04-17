@@ -220,7 +220,7 @@ impl Auth<'_> {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::test_utils::{create_server, HttpMockParams};
+    use crate::test_utils::*;
     use crate::utils::now;
     use mainline::dht::Testnet;
     use std::time::{SystemTime, UNIX_EPOCH};
@@ -233,63 +233,10 @@ mod test {
         let key_pair: Keypair = DeterministicKeyGen::generate(Some(seed));
         let user_id = key_pair.to_z32();
 
-        let challenge = Challenge::create(now() + 1000, None);
+        let server = create_server_for_auth_walk_through(user_id.to_string());
 
-        let get_challange_mock_params = HttpMockParams {
-            method: &Method::GET,
-            path: "/mvp/challenge",
-            body: &challenge.serialize(),
-            status: 200,
-            headers: vec![],
-        };
-
-        let path = format!("/mvp/users/{}/pkarr", user_id);
-        let send_user_root_signature_signup_mock_params = HttpMockParams {
-            method: &Method::PUT,
-            path: path.as_str(),
-            headers: vec![("Set-Cookie", "sessionId=123")],
-            status: 200,
-            body: &b"ok".to_vec(),
-        };
-
-        let path = format!("/mvp/session/{}", user_id);
-        let send_user_root_signature_login_mock_params = HttpMockParams {
-            method: &Method::PUT,
-            path: path.as_str(),
-            headers: vec![("Set-Cookie", "sessionId=1234")],
-            status: 200,
-            body: &b"ok".to_vec(),
-        };
-
-        let get_session_mock_params = HttpMockParams {
-            method: &Method::GET,
-            path: "/mvp/session",
-            headers: vec![("Set-Cookie", "sessionId=12345")],
-            body: &b"session".to_vec(), // TODO: proper session object
-            status: 200,
-        };
-
-        let path = format!("/mvp/session/{}", user_id);
-        let logout_mock_params = HttpMockParams {
-            method: &Method::DELETE,
-            path: path.as_str(),
-            status: 200,
-            body: &b"ok".to_vec(),
-            headers: vec![],
-        };
-
-        let server = create_server(vec![
-            get_challange_mock_params,
-            send_user_root_signature_signup_mock_params,
-            send_user_root_signature_login_mock_params,
-            get_session_mock_params,
-            logout_mock_params,
-        ]);
-
-        let mut resolver = Resolver::new(None, Some(&testnet.bootstrap));
-        let _ = resolver
-            .publish(&key_pair, &Url::parse(&server.url()).unwrap(), None)
-            .unwrap();
+        let url = Url::parse(&server.url()).unwrap();
+        let resolver = publish_url(&key_pair, &url, &testnet.bootstrap);
 
         let mut auth = Auth::new(resolver, None);
 

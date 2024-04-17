@@ -9,9 +9,15 @@ use crate::utils::now;
 
 use mainline::dht::Testnet;
 
-pub fn publish_url(key_pair: &Keypair, url: &Url, bootstrap: &Vec<String>) {
+pub fn publish_url<'a>(
+    key_pair: &'a Keypair,
+    url: &'a Url,
+    bootstrap: &'a Vec<String>,
+) -> Resolver<'a> {
     let mut resolver = Resolver::new(None, Some(bootstrap));
     let _ = resolver.publish(key_pair, url, None).unwrap();
+
+    resolver
 }
 
 pub struct HttpMockParams<'a> {
@@ -222,5 +228,60 @@ pub fn create_server_for_del_data(
         get_challange_mock_params,
         send_user_root_signature_signup_mock_params,
         delete_repo_mock_params,
+    ])
+}
+
+pub fn create_server_for_auth_walk_through(user_id: String) -> mockito::ServerGuard {
+    let challenge = Challenge::create(now() + 1000, None);
+
+    let get_challange_mock_params = HttpMockParams {
+        method: &Method::GET,
+        path: "/mvp/challenge",
+        body: &challenge.serialize(),
+        status: 200,
+        headers: vec![],
+    };
+
+    let path = format!("/mvp/users/{}/pkarr", user_id);
+    let send_user_root_signature_signup_mock_params = HttpMockParams {
+        method: &Method::PUT,
+        path: path.as_str(),
+        headers: vec![("Set-Cookie", "sessionId=123")],
+        status: 200,
+        body: &b"ok".to_vec(),
+    };
+
+    let path = format!("/mvp/session/{}", user_id);
+    let send_user_root_signature_login_mock_params = HttpMockParams {
+        method: &Method::PUT,
+        path: path.as_str(),
+        headers: vec![("Set-Cookie", "sessionId=1234")],
+        status: 200,
+        body: &b"ok".to_vec(),
+    };
+
+    let get_session_mock_params = HttpMockParams {
+        method: &Method::GET,
+        path: "/mvp/session",
+        headers: vec![("Set-Cookie", "sessionId=12345")],
+        body: &b"session".to_vec(), // TODO: proper session object
+        status: 200,
+    };
+
+    let path = format!("/mvp/session/{}", user_id);
+    let logout_mock_params = HttpMockParams {
+        method: &Method::DELETE,
+        path: path.as_str(),
+        status: 200,
+        body: &b"ok".to_vec(),
+        headers: vec![],
+    };
+
+    create_server(vec![
+        get_challange_mock_params,
+        send_user_root_signature_signup_mock_params,
+        send_user_root_signature_login_mock_params,
+        get_session_mock_params,
+        logout_mock_params,
     ])
 }
