@@ -184,3 +184,43 @@ pub fn create_server_for_get_data(
         get_data_mock_params,
     ])
 }
+
+pub fn create_server_for_del_data(
+    user_id: String,
+    repo_name: String,
+    folder_path: String,
+) -> mockito::ServerGuard {
+    let challenge = Challenge::create(now() + 1000, None);
+
+    let get_challange_mock_params = HttpMockParams {
+        method: &Method::GET,
+        path: "/mvp/challenge",
+        body: &challenge.serialize(),
+        status: 200,
+        headers: vec![],
+    };
+
+    let path = format!("/mvp/users/{}/pkarr", user_id);
+    let send_user_root_signature_signup_mock_params = HttpMockParams {
+        method: &Method::PUT,
+        path: path.as_str(),
+        headers: vec![("Set-Cookie", "sessionId=123")],
+        status: 200,
+        body: &b"ok".to_vec(),
+    };
+
+    let path = format!("/mvp/users/{}/repos/{}/{}", user_id, repo_name, folder_path);
+    let delete_repo_mock_params = HttpMockParams {
+        method: &Method::DELETE,
+        path: path.as_str(),
+        headers: vec![("Set-Cookie", "sessionId=1234")],
+        status: 200,
+        body: &b"totally ok".to_vec(),
+    };
+
+    create_server(vec![
+        get_challange_mock_params,
+        send_user_root_signature_signup_mock_params,
+        delete_repo_mock_params,
+    ])
+}
