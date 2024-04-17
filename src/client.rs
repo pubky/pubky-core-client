@@ -182,7 +182,7 @@ impl Client<'_> {
             Err(e) => return Err(e),
         }
     }
-    //
+
     //     /// List data in user's repository
     //     /*
     //     ListOption {
@@ -191,7 +191,7 @@ impl Client<'_> {
     //          limit: usize,
     //     }
     //     */
-    //     pub fn list (&self, user_id: &str, repo_name: &str, path: &str, opts: Option<ListOption>) -> Result<Vec<String>, String> { }
+    //     pub fn list (&mut self, user_id: &str, repo_name: &str, path: &str, opts: Option<ListOption>) -> Result<Vec<String>, String> { }
     //
     //
     //     /// Query data in user's repository
@@ -205,7 +205,7 @@ impl Client<'_> {
     //          reverse: bool,
     //     }
     //     */
-    //     pub fn query (&self, user_id: &str, repo_name: &str, query: Option<QueryOptions>) -> Result<Vec<String>, String> { }
+    //     pub fn query (&mut self, user_id: &str, repo_name: &str, query: Option<QueryOptions>) -> Result<Vec<String>, String> { }
 }
 #[cfg(test)]
 mod tests {
@@ -214,16 +214,9 @@ mod tests {
     use crate::transport::challenge::Challenge;
     use crate::transport::crypto::{DeterministicKeyGen, Keypair};
     use mainline::dht::Testnet;
-    use std::time::{SystemTime, UNIX_EPOCH};
+    use crate::utils::now;
 
     // TODO: move to helper
-    fn now() -> u64 {
-        let now = SystemTime::now();
-        now.duration_since(UNIX_EPOCH)
-            .expect("Time went backwards")
-            .as_secs()
-    }
-
     #[test]
     fn test_client_new() {
         let testnet = Testnet::new(10);

@@ -1,5 +1,6 @@
 pub mod client;
 mod transport;
+mod utils;
 
 #[cfg(test)]
 pub mod test_utils {

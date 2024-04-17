@@ -223,14 +223,7 @@ mod test {
     use crate::test_utils::{setup_datastore, HttpMockParams};
     use mainline::dht::Testnet;
     use std::time::{SystemTime, UNIX_EPOCH};
-
-    // TODO: move to helper
-    fn now() -> u64 {
-        let now = SystemTime::now();
-        now.duration_since(UNIX_EPOCH)
-            .expect("Time went backwards")
-            .as_secs()
-    }
+    use crate::utils::now;
 
     #[test]
     fn auth_walk_through() {
