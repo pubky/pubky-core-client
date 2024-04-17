@@ -7,7 +7,7 @@ use rand::RngCore;
 
 // Re-exporting public key for the challenge
 #[allow(unused_imports)]
-pub use pkarr::{PublicKey, Keypair};
+pub use pkarr::{Keypair, PublicKey};
 
 use ed25519_dalek::SigningKey;
 

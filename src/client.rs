@@ -213,8 +213,8 @@ mod tests {
     use crate::test_utils::{create_server, HttpMockParams};
     use crate::transport::challenge::Challenge;
     use crate::transport::crypto::{DeterministicKeyGen, Keypair};
-    use mainline::dht::Testnet;
     use crate::utils::now;
+    use mainline::dht::Testnet;
 
     #[test]
     fn test_client_new() {

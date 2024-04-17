@@ -221,9 +221,9 @@ impl Auth<'_> {
 mod test {
     use super::*;
     use crate::test_utils::{create_server, HttpMockParams};
+    use crate::utils::now;
     use mainline::dht::Testnet;
     use std::time::{SystemTime, UNIX_EPOCH};
-    use crate::utils::now;
 
     #[test]
     fn auth_walk_through() {

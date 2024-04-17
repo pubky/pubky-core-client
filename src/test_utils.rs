@@ -1,4 +1,8 @@
-use crate::transport::{resolver::Resolver, http::{Method, Url}, auth::SigType};
+use crate::transport::{
+    auth::SigType,
+    http::{Method, Url},
+    resolver::Resolver,
+};
 use mainline::dht::Testnet;
 
 pub struct HttpMockParams<'a> {
