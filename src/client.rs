@@ -81,7 +81,7 @@ impl Client<'_> {
             .login(&self.seed, self.dht_relay)
         {
             Ok(session_id) => Ok(session_id),
-            Err(e) => Err(Error::FailedToLogin),
+            Err(e) => Err(Error::FailedToLogin(e)),
         }
     }
 
@@ -94,7 +94,7 @@ impl Client<'_> {
             .logout(&self.user_id)
         {
             Ok(session_id) => Ok(session_id),
-            Err(_e) => Err(Error::FailedToLogout),
+            Err(e) => Err(Error::FailedToLogout(e)),
         }
     }
 
@@ -107,7 +107,7 @@ impl Client<'_> {
             .session()
         {
             Ok(session) => Ok(session),
-            Err(_e) => Err(Error::FailedToRetrieveSession),
+            Err(e) => Err(Error::FailedToRetrieveSession(e)),
         }
     }
 

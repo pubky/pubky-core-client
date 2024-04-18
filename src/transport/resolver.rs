@@ -1,3 +1,4 @@
+use crate::error::DHTError as Error;
 use pkarr::{dns, Keypair, PkarrClient, PublicKey, SignedPacket};
 use reqwest::Url;
 use std::collections::HashMap;
@@ -30,7 +31,7 @@ impl Resolver<'_> {
         &mut self,
         public_key: &PublicKey,
         relay_url: Option<&Url>,
-    ) -> Result<Url, String> {
+    ) -> Result<Url, Error> {
         if self.cache.contains_key(&public_key.to_string()) {
             return Ok(self
                 .cache
@@ -55,7 +56,7 @@ impl Resolver<'_> {
                         }
 
                         match v {
-                            None => return Err("No value found".to_string()),
+                            None => return Err(Error::NoRecordsFound),
                             Some(v) => match self
                                 .resolve_homeserver_url(&v.as_str().try_into().unwrap(), relay_url)
                             {
@@ -78,7 +79,7 @@ impl Resolver<'_> {
             }
         }
 
-        Err("No records found".to_string())
+        Err(Error::NoRecordsFound)
     }
 
     /// Publish record to relay or DHT
@@ -87,7 +88,7 @@ impl Resolver<'_> {
         key_pair: &Keypair,
         homeserver_url: &Url,
         relay_url: Option<&Url>,
-    ) -> Result<(), String> {
+    ) -> Result<(), Error> {
         let client = if self.bootstrap.is_some() {
             PkarrClient::builder()
                 .bootstrap(&self.bootstrap.clone().unwrap())
@@ -134,7 +135,7 @@ impl Resolver<'_> {
                     .insert(key_pair.to_z32().clone(), homeserver_url.clone());
                 Ok(())
             }
-            Err(_e) => Err("Failed to publish".to_string()),
+            Err(e) => Err(Error::EntryNotPublished(e.to_string())),
         }
     }
 
@@ -143,7 +144,7 @@ impl Resolver<'_> {
         &self,
         public_key: &PublicKey,
         relay_url: Option<&Url>,
-    ) -> Result<Url, String> {
+    ) -> Result<Url, Error> {
         let packet = match self.lookup(public_key, relay_url) {
             Err(e) => return Err(e),
             Ok(key) => key,
@@ -180,7 +181,7 @@ impl Resolver<'_> {
             }
         }
 
-        Err("No records found".to_string())
+        Err(Error::NoRecordsFound)
     }
 
     /// Looks up a public key in the relay or DHT
@@ -188,7 +189,7 @@ impl Resolver<'_> {
         &self,
         public_key: &PublicKey,
         relay_url: Option<&Url>,
-    ) -> Result<SignedPacket, String> {
+    ) -> Result<SignedPacket, Error> {
         let client = if self.bootstrap.is_some() {
             PkarrClient::builder()
                 .bootstrap(&self.bootstrap.clone().unwrap())
@@ -199,15 +200,15 @@ impl Resolver<'_> {
 
         let public_key = public_key.clone();
         let entry = match relay_url {
-            Some(relay_url) => client.relay_get(relay_url, public_key).unwrap(),
+            Some(relay_url) => client.relay_get(relay_url, public_key.clone()).unwrap(),
             None => match &self.relay_url {
-                Some(relay_url) => client.relay_get(&relay_url, public_key).unwrap(),
-                None => client.resolve_most_recent(public_key),
+                Some(relay_url) => client.relay_get(&relay_url, public_key.clone()).unwrap(),
+                None => client.resolve_most_recent(public_key.clone()),
             },
         };
 
         match entry {
-            None => Err("No entry found".to_string()),
+            None => Err(Error::EntryNotFound(public_key.clone().to_string())),
             Some(entry) => Ok(entry),
         }
     }

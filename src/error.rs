@@ -1,13 +1,13 @@
 #[derive(thiserror::Error, Debug)]
 pub enum ClientError {
-    #[error("Failed to login")]
-    FailedToLogin,
+    #[error("Failed to login: {0}")]
+    FailedToLogin(AuthError),
 
-    #[error("Failed to logout")]
-    FailedToLogout,
+    #[error("Failed to logout: {0}")]
+    FailedToLogout(AuthError),
 
-    #[error("Failed to retrieve session")]
-    FailedToRetrieveSession,
+    #[error("Failed to retrieve session: {0}")]
+    FailedToRetrieveSession(AuthError),
 
     #[error("Failed to create repository: {0}")]
     FailedToCreateRepository(HTTPError),
@@ -30,13 +30,11 @@ pub enum AuthError {
     #[error("Faield to send user signature: {0}")]
     FailedToSendUserSignature(HTTPError),
 
-    // TODO: add resovler error
-    #[error("Failed to resolve homeserver")]
-    FailedToResolveHomeserver,
+    #[error("Failed to resolve homeserver: {0}")]
+    FailedToResolveHomeserver(DHTError),
 
-    // TODO: add resovler error
-    #[error("Failed to publish homeserver")]
-    FailedToPublishHomeserver,
+    #[error("Failed to publish homeserver: {0}")]
+    FailedToPublishHomeserver(DHTError),
 
     #[error("Failed to retrieve session: {0}")]
     FailedToRetrieveSession(HTTPError),
@@ -65,61 +63,15 @@ pub enum ChallengeError {
     #[error("Invalid signature")]
     InvalidSignature,
 }
-// pub enum Error {
-//     // #[error("DHT error: {0}")]
-//     // pub DHT,
-//     //
-//     // #[error("HTTP error: {0}")]
-//     // pub HTTP,
-//     //
-//     // #[error("Challenge error: {0}")]
-//     // pub Challenge,
-//     //
-//     // #[error("Auth error: {0}")]
-//     // pub Auth
-//     //
-//     #[error("Client error: {0}")]
-//     pub Client
-// }
 
-// #[derive(thiserror::Error, Debug, Display, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-// enum DHT {
-//     #[error("DHT entry not found: {0}")]
-//     EntryNotFound(String),
-//
-//     #[error("Failed to publish DHT entry : {0}")]
-//     EntryNotPublished(String),
-// }
-//
-// #[derive(thiserror::Error, Debug, Display, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-// enum HTTP {
-//     #[error("Failed to send HTTP request: {0}")]
-//     RequestFailed(String),
-// }
-//
-// #[derive(thiserror::Error, Debug, Display, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-// enum Challenge {
-//     #[error("Expired challenge")]
-//     Expired,
-//
-//     #[error("Invalid signature")]
-//     InvalidSignature,
-// }
-//
-// #[derive(thiserror::Error, Debug, Display, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-// enum Auth {
-//     #[error("Invalid signature length: {0}")]
-//     InvalidSignatureLength(String),
-//
-//     #[error("Failed to retrieve session: {0}")]
-//     FailedToRetrieveSession(HTTP),
-//
-//     #[error("Not authenticated with homeserver")]
-//     NotAuthenticated,
-//
-//     #[error("Logout failed: {0}")]
-//     LogoutFailed(HTTP),
-//
-//     #[error("Already logged out")]
-//     AlreadyLoggedOut,
-// }
+#[derive(thiserror::Error, Debug, Clone)]
+pub enum DHTError {
+    #[error("DHT entry not found: {0}")]
+    EntryNotFound(String),
+
+    #[error("Failed to publish DHT entry : {0}")]
+    EntryNotPublished(String),
+
+    #[error("No records found")]
+    NoRecordsFound,
+}

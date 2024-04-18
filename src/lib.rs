@@ -1,7 +1,7 @@
 pub mod client;
+mod error;
 mod transport;
 mod utils;
-mod error;
 
 #[cfg(test)]
 mod test_utils;

@@ -43,7 +43,7 @@ impl Auth<'_> {
                 .resolve_homeserver(&key_pair.public_key(), dht_relay_url)
             {
                 Ok(url) => Some(url),
-                Err(e) => return Err(Error::FailedToResolveHomeserver),
+                Err(e) => return Err(Error::FailedToResolveHomeserver(e)),
             };
         }
 
@@ -54,7 +54,7 @@ impl Auth<'_> {
             dht_relay_url,
         ) {
             Ok(_) => (),
-            Err(e) => return Err(Error::FailedToPublishHomeserver),
+            Err(e) => return Err(Error::FailedToPublishHomeserver(e.clone())),
         };
 
         zeroize(key_pair.secret_key().as_mut());
@@ -151,7 +151,7 @@ impl Auth<'_> {
                 .resolve_homeserver(&key_pair.public_key(), dht_relay_url)
             {
                 Ok(url) => Some(url),
-                Err(e) => return Err(Error::FailedToResolveHomeserver),
+                Err(e) => return Err(Error::FailedToResolveHomeserver(e)),
             };
         }
 
@@ -198,7 +198,7 @@ impl Auth<'_> {
             self.homeserver_url = match self.resolver.resolve_homeserver(&public_key, dht_relay_url)
             {
                 Ok(url) => Some(url),
-                Err(e) => return Err(Error::FailedToResolveHomeserver),
+                Err(e) => return Err(Error::FailedToResolveHomeserver(e)),
             };
         };
 
