@@ -44,75 +44,15 @@ pub fn create_server(params: Vec<HttpMockParams>) -> mockito::ServerGuard {
     return server;
 }
 
-pub fn create_server_for_signup(user_id: String) -> mockito::ServerGuard {
-    let challenge = Challenge::create(now() + 1000, None);
-
-    let get_challange_mock_params = HttpMockParams {
-        method: &Method::GET,
-        path: "/mvp/challenge",
-        body: &challenge.serialize(),
-        status: 200,
-        headers: vec![],
-    };
-
-    let path = format!("/mvp/users/{}/pkarr", user_id);
-    let send_user_root_signature_signup_mock_params = HttpMockParams {
-        method: &Method::PUT,
-        path: path.as_str(),
-        headers: vec![("Set-Cookie", "sessionId=123")],
-        status: 200,
-        body: &b"ok".to_vec(),
-    };
-
-    create_server(vec![
-        get_challange_mock_params,
-        send_user_root_signature_signup_mock_params,
-    ])
-}
-
-pub fn create_server_for_repo(user_id: String, repo_name: String) -> mockito::ServerGuard {
-    let challenge = Challenge::create(now() + 1000, None);
-
-    let get_challange_mock_params = HttpMockParams {
-        method: &Method::GET,
-        path: "/mvp/challenge",
-        body: &challenge.serialize(),
-        status: 200,
-        headers: vec![],
-    };
-
-    let path = format!("/mvp/users/{}/pkarr", user_id);
-    let send_user_root_signature_signup_mock_params = HttpMockParams {
-        method: &Method::PUT,
-        path: path.as_str(),
-        headers: vec![("Set-Cookie", "sessionId=123")],
-        status: 200,
-        body: &b"ok".to_vec(),
-    };
-
-    let path = format!("/mvp/users/{}/repos/{}", user_id, repo_name);
-    let put_folder_mock_params = HttpMockParams {
-        method: &Method::PUT,
-        path: path.as_str(),
-        headers: vec![("Set-Cookie", "sessionId=1234")],
-        status: 200,
-        body: &b"very ok".to_vec(),
-    };
-
-    create_server(vec![
-        get_challange_mock_params,
-        send_user_root_signature_signup_mock_params,
-        put_folder_mock_params,
-    ])
-}
-
-pub fn create_server_for_data(
+pub fn create_homeserver_mock(
     user_id: String,
     repo_name: String,
     folder_path: String,
+    data: String,
 ) -> mockito::ServerGuard {
     let challenge = Challenge::create(now() + 1000, None);
 
+    // AUTH
     let get_challange_mock_params = HttpMockParams {
         method: &Method::GET,
         path: "/mvp/challenge",
@@ -125,128 +65,7 @@ pub fn create_server_for_data(
     let send_user_root_signature_signup_mock_params = HttpMockParams {
         method: &Method::PUT,
         path: path.as_str(),
-        headers: vec![("Set-Cookie", "sessionId=123")],
-        status: 200,
-        body: &b"ok".to_vec(),
-    };
-
-    let repo_name = "test_repo";
-    let folder_path = "test_path";
-    let path = format!("/mvp/users/{}/repos/{}/{}", user_id, repo_name, folder_path);
-    let create_repo_mock_params = HttpMockParams {
-        method: &Method::PUT,
-        path: path.as_str(),
-        headers: vec![("Set-Cookie", "sessionId=1234")],
-        status: 200,
-        body: &b"very ok".to_vec(),
-    };
-
-    create_server(vec![
-        get_challange_mock_params,
-        send_user_root_signature_signup_mock_params,
-        create_repo_mock_params,
-    ])
-}
-
-pub fn create_server_for_get_data(
-    user_id: String,
-    repo_name: String,
-    folder_path: String,
-    body: String,
-) -> mockito::ServerGuard {
-    let challenge = Challenge::create(now() + 1000, None);
-
-    let get_challange_mock_params = HttpMockParams {
-        method: &Method::GET,
-        path: "/mvp/challenge",
-        body: &challenge.serialize(),
-        status: 200,
-        headers: vec![],
-    };
-
-    let path = format!("/mvp/users/{}/pkarr", user_id);
-    let send_user_root_signature_signup_mock_params = HttpMockParams {
-        method: &Method::PUT,
-        path: path.as_str(),
-        headers: vec![("Set-Cookie", "sessionId=123")],
-        status: 200,
-        body: &b"ok".to_vec(),
-    };
-
-    let repo_name = "test_repo";
-    let folder_path = "test_path";
-    let path = format!("/mvp/users/{}/repos/{}/{}", user_id, repo_name, folder_path);
-    let get_data_mock_params = HttpMockParams {
-        method: &Method::GET,
-        path: path.as_str(),
-        headers: vec![("Set-Cookie", "sessionId=1234")],
-        status: 200,
-        body: &b"totally ok".to_vec(),
-    };
-
-    create_server(vec![
-        get_challange_mock_params,
-        send_user_root_signature_signup_mock_params,
-        get_data_mock_params,
-    ])
-}
-
-pub fn create_server_for_del_data(
-    user_id: String,
-    repo_name: String,
-    folder_path: String,
-) -> mockito::ServerGuard {
-    let challenge = Challenge::create(now() + 1000, None);
-
-    let get_challange_mock_params = HttpMockParams {
-        method: &Method::GET,
-        path: "/mvp/challenge",
-        body: &challenge.serialize(),
-        status: 200,
-        headers: vec![],
-    };
-
-    let path = format!("/mvp/users/{}/pkarr", user_id);
-    let send_user_root_signature_signup_mock_params = HttpMockParams {
-        method: &Method::PUT,
-        path: path.as_str(),
-        headers: vec![("Set-Cookie", "sessionId=123")],
-        status: 200,
-        body: &b"ok".to_vec(),
-    };
-
-    let path = format!("/mvp/users/{}/repos/{}/{}", user_id, repo_name, folder_path);
-    let delete_repo_mock_params = HttpMockParams {
-        method: &Method::DELETE,
-        path: path.as_str(),
-        headers: vec![("Set-Cookie", "sessionId=1234")],
-        status: 200,
-        body: &b"totally ok".to_vec(),
-    };
-
-    create_server(vec![
-        get_challange_mock_params,
-        send_user_root_signature_signup_mock_params,
-        delete_repo_mock_params,
-    ])
-}
-
-pub fn create_server_for_auth_walk_through(user_id: String) -> mockito::ServerGuard {
-    let challenge = Challenge::create(now() + 1000, None);
-
-    let get_challange_mock_params = HttpMockParams {
-        method: &Method::GET,
-        path: "/mvp/challenge",
-        body: &challenge.serialize(),
-        status: 200,
-        headers: vec![],
-    };
-
-    let path = format!("/mvp/users/{}/pkarr", user_id);
-    let send_user_root_signature_signup_mock_params = HttpMockParams {
-        method: &Method::PUT,
-        path: path.as_str(),
-        headers: vec![("Set-Cookie", "sessionId=123")],
+        headers: vec![("Set-Cookie", "sessionId=send_signature_signup")],
         status: 200,
         body: &b"ok".to_vec(),
     };
@@ -255,7 +74,7 @@ pub fn create_server_for_auth_walk_through(user_id: String) -> mockito::ServerGu
     let send_user_root_signature_login_mock_params = HttpMockParams {
         method: &Method::PUT,
         path: path.as_str(),
-        headers: vec![("Set-Cookie", "sessionId=1234")],
+        headers: vec![("Set-Cookie", "sessionId=send_signature_login")],
         status: 200,
         body: &b"ok".to_vec(),
     };
@@ -263,7 +82,7 @@ pub fn create_server_for_auth_walk_through(user_id: String) -> mockito::ServerGu
     let get_session_mock_params = HttpMockParams {
         method: &Method::GET,
         path: "/mvp/session",
-        headers: vec![("Set-Cookie", "sessionId=12345")],
+        headers: vec![("Set-Cookie", "sessionId=get_session")],
         body: &b"session".to_vec(), // TODO: proper session object
         status: 200,
     };
@@ -277,11 +96,52 @@ pub fn create_server_for_auth_walk_through(user_id: String) -> mockito::ServerGu
         headers: vec![],
     };
 
+    // REPO
+    let path = format!("/mvp/users/{}/repos/{}", user_id, repo_name);
+    let create_repo_mock_params = HttpMockParams {
+        method: &Method::PUT,
+        path: path.as_str(),
+        headers: vec![("Set-Cookie", "sessionId=create_repo")],
+        status: 200,
+        body: &b"ok".to_vec(),
+    };
+
+    let path = format!("/mvp/users/{}/repos/{}/{}", user_id, repo_name, folder_path);
+    let put_folder_mock_params = HttpMockParams {
+        method: &Method::PUT,
+        path: path.as_str(),
+        headers: vec![("Set-Cookie", "sessionId=create_folder")],
+        status: 200,
+        body: &b"ok".to_vec(),
+    };
+
+    let path = format!("/mvp/users/{}/repos/{}/{}", user_id, repo_name, folder_path);
+    let get_data_mock_params = HttpMockParams {
+        method: &Method::GET,
+        path: path.as_str(),
+        headers: vec![("Set-Cookie", "sessionId=get_data")],
+        status: 200,
+        body: &data.as_bytes().to_vec(),
+    };
+
+    let path = format!("/mvp/users/{}/repos/{}/{}", user_id, repo_name, folder_path);
+    let delete_data_mock_params = HttpMockParams {
+        method: &Method::DELETE,
+        path: path.as_str(),
+        headers: vec![("Set-Cookie", "sessionId=delete_data")],
+        status: 200,
+        body: &b"totally ok".to_vec(),
+    };
+
     create_server(vec![
         get_challange_mock_params,
         send_user_root_signature_signup_mock_params,
         send_user_root_signature_login_mock_params,
         get_session_mock_params,
         logout_mock_params,
+        create_repo_mock_params,
+        put_folder_mock_params,
+        get_data_mock_params,
+        delete_data_mock_params,
     ])
 }

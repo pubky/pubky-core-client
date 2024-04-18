@@ -221,9 +221,7 @@ impl Auth<'_> {
 mod test {
     use super::*;
     use crate::test_utils::*;
-    use crate::utils::now;
     use mainline::dht::Testnet;
-    use std::time::{SystemTime, UNIX_EPOCH};
 
     #[test]
     fn auth_walk_through() {
@@ -233,7 +231,12 @@ mod test {
         let key_pair: Keypair = DeterministicKeyGen::generate(Some(seed));
         let user_id = key_pair.to_z32();
 
-        let server = create_server_for_auth_walk_through(user_id.to_string());
+        let server = create_homeserver_mock(
+            user_id.to_string(),
+            "repo_name".to_string(),
+            "folder_path".to_string(),
+            "data".to_string(),
+        );
 
         let url = Url::parse(&server.url()).unwrap();
         let resolver = publish_url(&key_pair, &url, &testnet.bootstrap);
@@ -242,7 +245,7 @@ mod test {
 
         // TEST SIGNUP
         let user_id = auth.signup(seed, None).unwrap();
-        let session_id = "123".to_string();
+        let session_id = "send_signature_signup".to_string();
         assert_eq!(user_id, user_id);
         assert_eq!(
             auth.homeserver_url,
@@ -253,15 +256,15 @@ mod test {
         // TEST LOGOUT
         let res_session_id = auth.logout(&user_id).unwrap();
         assert_eq!(auth.session_id, None);
-        assert_eq!(res_session_id, "123");
+        assert_eq!(res_session_id, "send_signature_signup");
 
         // TEST SIGNUP AGAIN
         let resolver = Resolver::new(None, Some(&testnet.bootstrap));
         let mut auth = Auth::new(resolver, Some(Url::parse(&server.url()).unwrap()));
 
-        let user_id = auth.signup(seed, None).unwrap();
-        let session_id = "123".to_string();
-        assert_eq!(user_id, user_id);
+        let got_user_id = auth.signup(seed, None).unwrap();
+        let session_id = "send_signature_signup".to_string();
+        assert_eq!(got_user_id, user_id);
         assert_eq!(
             auth.homeserver_url,
             Some(Url::parse(&server.url()).unwrap())
@@ -271,11 +274,11 @@ mod test {
         // TEST LOGOUT
         let res_session_id = auth.logout(&user_id).unwrap();
         assert_eq!(auth.session_id, None);
-        assert_eq!(res_session_id, "123");
+        assert_eq!(res_session_id, "send_signature_signup");
 
         // TEST LOGIN
         let res_user_id = auth.login(seed, None).unwrap();
-        let session_id = "1234".to_string();
+        let session_id = "send_signature_login".to_string();
         assert_eq!(user_id, res_user_id);
         assert_eq!(
             auth.homeserver_url,
@@ -285,7 +288,7 @@ mod test {
 
         // TEST SESSION
         let session = auth.session().unwrap();
-        let session_id = "12345".to_string();
+        let session_id = "get_session".to_string();
         assert_eq!(session, "session".to_string());
         assert_eq!(auth.session_id, Some(session_id));
         assert_eq!(

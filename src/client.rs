@@ -65,6 +65,11 @@ impl Client<'_> {
         keypair.to_z32()
     }
 
+    /* "AUTH" RELATED LOGIC */
+    // login
+    // logout
+    // session
+
     /* "REPOS" RELATED LOGIC */
 
     /// Create repository for user
@@ -224,9 +229,7 @@ impl Client<'_> {
 mod tests {
     use super::*;
     use crate::test_utils::*;
-    use crate::transport::challenge::Challenge;
     use crate::transport::crypto::{DeterministicKeyGen, Keypair};
-    use crate::utils::now;
     use mainline::dht::Testnet;
 
     #[test]
@@ -236,7 +239,12 @@ mod tests {
 
         let key_pair: Keypair = DeterministicKeyGen::generate(Some(seed));
         let user_id = key_pair.to_z32();
-        let server = create_server_for_signup(user_id.clone());
+        let server = create_homeserver_mock(
+            user_id.to_string(),
+            "repo_name".to_string(),
+            "folder_path".to_string(),
+            "data".to_string(),
+        );
         let _ = publish_url(
             &key_pair,
             &Url::parse(&server.url()).unwrap(),
@@ -256,7 +264,7 @@ mod tests {
         );
         assert_eq!(
             client.homeservers_cache.get(&user_id).unwrap().session_id,
-            Some("123".to_string())
+            Some("send_signature_signup".to_string())
         );
     }
 
@@ -269,7 +277,12 @@ mod tests {
         let user_id = key_pair.to_z32();
         let repo_name = "test_repo";
 
-        let server = create_server_for_repo(user_id.clone(), repo_name.to_string());
+        let server = create_homeserver_mock(
+            user_id.to_string(),
+            repo_name.to_string(),
+            "folder_path".to_string(),
+            "data".to_string(),
+        );
         let _ = publish_url(
             &key_pair,
             &Url::parse(&server.url()).unwrap(),
@@ -291,7 +304,7 @@ mod tests {
         );
         assert_eq!(
             client.homeservers_cache.get(&user_id).unwrap().session_id,
-            Some("1234".to_string())
+            Some("create_repo".to_string())
         );
     }
 
@@ -305,10 +318,11 @@ mod tests {
 
         let repo_name = "test_repo";
         let folder_path = "test_path";
-        let server = create_server_for_data(
-            user_id.clone(),
-            "test_repo".to_string(),
-            "test_path".to_string(),
+        let server = create_homeserver_mock(
+            user_id.to_string(),
+            repo_name.to_string(),
+            folder_path.to_string(),
+            "test_payload".to_string(),
         );
 
         let _ = publish_url(
@@ -341,10 +355,11 @@ mod tests {
         );
         assert_eq!(
             client.homeservers_cache.get(&user_id).unwrap().session_id,
-            Some("1234".to_string())
+            Some("create_folder".to_string())
         );
     }
 
+    #[test]
     fn test_client_get() {
         let testnet = Testnet::new(10);
 
@@ -356,8 +371,8 @@ mod tests {
         let folder_path = "test_path";
         let data = "test_payload";
 
-        let server = create_server_for_get_data(
-            user_id.clone(),
+        let server = create_homeserver_mock(
+            user_id.to_string(),
             repo_name.to_string(),
             folder_path.to_string(),
             data.to_string(),
@@ -385,10 +400,11 @@ mod tests {
         );
         assert_eq!(
             client.homeservers_cache.get(&user_id).unwrap().session_id,
-            Some("1234".to_string())
+            Some("get_data".to_string())
         );
     }
 
+    #[test]
     fn test_client_delete() {
         let testnet = Testnet::new(10);
 
@@ -398,10 +414,11 @@ mod tests {
         let repo_name = "test_repo";
         let folder_path = "test_path";
 
-        let server = create_server_for_del_data(
+        let server = create_homeserver_mock(
             user_id.to_string(),
             repo_name.to_string(),
             folder_path.to_string(),
+            "data".to_string(),
         );
 
         let _ = publish_url(
@@ -426,7 +443,7 @@ mod tests {
         );
         assert_eq!(
             client.homeservers_cache.get(&user_id).unwrap().session_id,
-            Some("1234".to_string())
+            Some("delete_data".to_string())
         );
     }
 }
