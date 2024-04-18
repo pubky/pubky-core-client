@@ -21,6 +21,12 @@ pub enum ClientError {
     #[error("Failed to delete data from repository")]
     FailedToDeleteData,
 }
+
+#[derive(thiserror::Error, Debug)]
+pub enum HTTPError {
+    #[error("Failed to send HTTP request: {0}")]
+    RequestFailed(String),
+}
 // pub enum Error {
 //     // #[error("DHT error: {0}")]
 //     // pub DHT,

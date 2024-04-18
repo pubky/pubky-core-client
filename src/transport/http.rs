@@ -1,3 +1,4 @@
+use crate::error::HTTPError as Error;
 use reqwest::blocking::Client;
 pub use reqwest::header::HeaderMap;
 pub use reqwest::Method;
@@ -11,7 +12,7 @@ pub fn request(
     session_id: &mut Option<String>,
     headers: Option<&HeaderMap>,
     body: Option<String>,
-) -> Result<String, String> {
+) -> Result<String, Error> {
     // TODO: consider moving somewhere outside?
     let client = Client::new();
     let mut request_builder = client.request(method, path);
@@ -37,7 +38,7 @@ pub fn request(
             }
             Ok(res.text().unwrap())
         }
-        Err(err) => Err(format!("Error: {:?}", err)),
+        Err(err) => Err(Error::RequestFailed(err.to_string())),
     }
 }
 
