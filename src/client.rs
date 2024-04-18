@@ -1,3 +1,5 @@
+use crate::error::ClientError as Error;
+
 use std::collections::HashMap;
 
 use crate::transport::{
@@ -71,33 +73,48 @@ impl Client<'_> {
 
     /* "AUTH" RELATED LOGIC */
     /// login
-    pub fn login(&mut self) -> Result<String, String> {
-        self.homeservers_cache
+    pub fn login(&mut self) -> Result<String, Error> {
+        match self
+            .homeservers_cache
             .get_mut(&self.user_id)
             .unwrap()
             .login(&self.seed, self.dht_relay)
+        {
+            Ok(session_id) => Ok(session_id),
+            Err(_e) => Err(Error::FailedToLogin),
+        }
     }
 
     /// logout
-    pub fn logout(&mut self) -> Result<String, String> {
-        self.homeservers_cache
+    pub fn logout(&mut self) -> Result<String, Error> {
+        match self
+            .homeservers_cache
             .get_mut(&self.user_id)
             .unwrap()
             .logout(&self.user_id)
+        {
+            Ok(session_id) => Ok(session_id),
+            Err(_e) => Err(Error::FailedToLogout),
+        }
     }
 
     /// session
-    pub fn session(&mut self) -> Result<String, String> {
-        self.homeservers_cache
+    pub fn session(&mut self) -> Result<String, Error> {
+        match self
+            .homeservers_cache
             .get_mut(&self.user_id)
             .unwrap()
             .session()
+        {
+            Ok(session) => Ok(session),
+            Err(_e) => Err(Error::FailedToRetrieveSession),
+        }
     }
 
     /* "REPOS" RELATED LOGIC */
 
     /// Create repository for user
-    pub fn create(&mut self, user_id: &str, repo_name: &str) -> Result<(), String> {
+    pub fn create(&mut self, user_id: &str, repo_name: &str) -> Result<(), Error> {
         let url = &self
             .homeservers_cache
             .get(user_id)
@@ -116,7 +133,7 @@ impl Client<'_> {
             None,
         ) {
             Ok(_) => Ok(()),
-            Err(e) => return Err(e),
+            Err(e) => return Err(Error::FailedToCreateRepository),
         }
     }
 
@@ -127,7 +144,7 @@ impl Client<'_> {
         repo_name: &str,
         path: &str,
         payload: &str,
-    ) -> Result<Url, String> {
+    ) -> Result<Url, Error> {
         let url = &self
             .homeservers_cache
             .get(user_id)
@@ -163,12 +180,12 @@ impl Client<'_> {
 
         match response {
             Ok(_) => Ok(url.clone()),
-            Err(e) => return Err(e),
+            Err(e) => return Err(Error::FailedToStoreData),
         }
     }
 
     /// Get data from user's repository and return it as a JSON(?)
-    pub fn get(&mut self, user_id: &str, repo_name: &str, path: &str) -> Result<String, String> {
+    pub fn get(&mut self, user_id: &str, repo_name: &str, path: &str) -> Result<String, Error> {
         let url = &self
             .homeservers_cache
             .get(user_id)
@@ -192,12 +209,12 @@ impl Client<'_> {
 
         match response {
             Ok(body) => Ok(body),
-            Err(e) => return Err(e),
+            Err(e) => return Err(Error::FailedToRetrieveData),
         }
     }
 
     /// Delete data from user's repository
-    pub fn delete(&mut self, user_id: &str, repo_name: &str, path: &str) -> Result<(), String> {
+    pub fn delete(&mut self, user_id: &str, repo_name: &str, path: &str) -> Result<(), Error> {
         let url = &self
             .homeservers_cache
             .get(user_id)
@@ -221,7 +238,7 @@ impl Client<'_> {
 
         match response {
             Ok(_) => Ok(()),
-            Err(e) => return Err(e),
+            Err(e) => return Err(Error::FailedToDeleteData),
         }
     }
 
@@ -316,7 +333,7 @@ mod tests {
 
         let result = client.create(&user_id, repo_name);
 
-        assert_eq!(result, Ok(()));
+        assert_eq!(result.unwrap(), ());
         assert_eq!(client.homeservers_cache.len(), 1);
         assert_eq!(
             client
