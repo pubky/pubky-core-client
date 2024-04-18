@@ -991,6 +991,7 @@ dependencies = [
  "reqwest 0.12.2",
  "serde",
  "serde_json",
+ "thiserror",
  "uuid",
  "z32",
 ]
