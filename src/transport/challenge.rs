@@ -1,3 +1,4 @@
+use crate::error::ChallengeError as Error;
 use crate::transport::crypto;
 use crate::utils::now;
 
@@ -62,14 +63,14 @@ impl Challenge {
         &self,
         signature: &crypto::Signature,
         public_key: &crypto::PublicKey,
-    ) -> Result<(), &'static str> {
+    ) -> Result<(), Error> {
         if self.expired() {
-            return Err("Expired challenge");
+            return Err(Error::Expired);
         }
 
         match public_key.verify(&self.signable, signature) {
             Ok(_) => Ok(()),
-            Err(_) => Err("Invalid signature"),
+            Err(_) => Err(Error::InvalidSignature),
         }
     }
 }

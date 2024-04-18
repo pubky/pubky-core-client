@@ -9,23 +9,39 @@ pub enum ClientError {
     #[error("Failed to retrieve session")]
     FailedToRetrieveSession,
 
-    #[error("Failed to create repository")]
-    FailedToCreateRepository,
+    #[error("Failed to create repository: {0}")]
+    FailedToCreateRepository(HTTPError),
 
-    #[error("Failed to store data in repository")]
-    FailedToStoreData,
+    #[error("Failed to store data in repository: {0}")]
+    FailedToStoreData(HTTPError),
 
-    #[error("Failed to retrieve data from repository")]
-    FailedToRetrieveData,
+    #[error("Failed to retrieve data from repository: {0}")]
+    FailedToRetrieveData(HTTPError),
 
-    #[error("Failed to delete data from repository")]
-    FailedToDeleteData,
+    #[error("Failed to delete data from repository: {0}")]
+    FailedToDeleteData(HTTPError),
 }
+
+// #[derive(thiserror::Error, Debug)]
+// pub enum AuthError {
+//     #[error("Failed to get challenge: {0}")]
+//     FailedToGetChallenge(HTTPError),
+//
+// }
 
 #[derive(thiserror::Error, Debug)]
 pub enum HTTPError {
     #[error("Failed to send HTTP request: {0}")]
     RequestFailed(String),
+}
+
+#[derive(thiserror::Error, Debug)]
+pub enum ChallengeError {
+    #[error("Expired challenge")]
+    Expired,
+
+    #[error("Invalid signature")]
+    InvalidSignature,
 }
 // pub enum Error {
 //     // #[error("DHT error: {0}")]
