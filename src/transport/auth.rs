@@ -62,6 +62,7 @@ impl Auth<'_> {
     }
 
     /// Login to an account at the homeserver
+    // TODO: add support for login to others homeservers (not part of SDK yet)
     pub fn login(
         &mut self,
         seed: &[u8; 32],

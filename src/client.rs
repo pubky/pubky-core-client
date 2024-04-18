@@ -23,8 +23,10 @@ use crate::transport::{
 
 pub struct Client<'a> {
     pub homeserver_url: Url, // own homeserver
+    pub user_id: String,     // own user id
     seed: [u8; 32],
     homeservers_cache: HashMap<String, Auth<'a>>, // homervers of others
+    dht_relay: Option<&'a Url>,
 }
 
 impl Client<'_> {
@@ -43,12 +45,14 @@ impl Client<'_> {
         let homeserver_url = auth.homeserver_url.clone().unwrap();
 
         let mut homeservers_cache = HashMap::new();
-        homeservers_cache.insert(user_id, auth);
+        homeservers_cache.insert(user_id.clone(), auth);
 
         Client {
             seed,
             homeservers_cache,
             homeserver_url,
+            user_id,
+            dht_relay,
         }
     }
 
@@ -66,9 +70,29 @@ impl Client<'_> {
     }
 
     /* "AUTH" RELATED LOGIC */
-    // login
-    // logout
-    // session
+    /// login
+    pub fn login(&mut self) -> Result<String, String> {
+        self.homeservers_cache
+            .get_mut(&self.user_id)
+            .unwrap()
+            .login(&self.seed, self.dht_relay)
+    }
+
+    /// logout
+    pub fn logout(&mut self) -> Result<String, String> {
+        self.homeservers_cache
+            .get_mut(&self.user_id)
+            .unwrap()
+            .logout(&self.user_id)
+    }
+
+    /// session
+    pub fn session(&mut self) -> Result<String, String> {
+        self.homeservers_cache
+            .get_mut(&self.user_id)
+            .unwrap()
+            .session()
+    }
 
     /* "REPOS" RELATED LOGIC */
 

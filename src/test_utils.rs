@@ -1,13 +1,10 @@
 use crate::transport::{
-    auth::SigType,
     challenge::Challenge,
     crypto::Keypair,
     http::{Method, Url},
     resolver::Resolver,
 };
 use crate::utils::now;
-
-use mainline::dht::Testnet;
 
 pub fn publish_url<'a>(
     key_pair: &'a Keypair,
