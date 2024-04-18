@@ -1,3 +1,4 @@
+use crate::error::AuthError as Error;
 use crate::transport::challenge::Challenge;
 use crate::transport::crypto::{zeroize, DeterministicKeyGen, Keypair, PublicKey};
 use crate::transport::http::{request, HeaderMap, Method, Url};
@@ -28,12 +29,12 @@ impl Auth<'_> {
         &mut self,
         seed: &[u8; 32],
         dht_relay_url: Option<&Url>,
-    ) -> Result<String, String> {
+    ) -> Result<String, Error> {
         let key_pair: &Keypair = &DeterministicKeyGen::generate(Some(seed));
         let user_id = match self.send_user_root_signature(&SigType::Signup, key_pair, dht_relay_url)
         {
             Ok(user_id) => user_id,
-            Err(e) => return Err(format!("Error signing up: {}", e)),
+            Err(e) => return Err(e),
         };
 
         if self.homeserver_url.is_none() {
@@ -42,7 +43,7 @@ impl Auth<'_> {
                 .resolve_homeserver(&key_pair.public_key(), dht_relay_url)
             {
                 Ok(url) => Some(url),
-                Err(e) => return Err(format!("Error resolving homeserver: {}", e)),
+                Err(e) => return Err(Error::FailedToResolveHomeserver),
             };
         }
 
@@ -53,7 +54,7 @@ impl Auth<'_> {
             dht_relay_url,
         ) {
             Ok(_) => (),
-            Err(e) => return Err(format!("Error publishing public key: {}", e)),
+            Err(e) => return Err(Error::FailedToPublishHomeserver),
         };
 
         zeroize(key_pair.secret_key().as_mut());
@@ -63,16 +64,12 @@ impl Auth<'_> {
 
     /// Login to an account at the homeserver
     // TODO: add support for login to others homeservers (not part of SDK yet)
-    pub fn login(
-        &mut self,
-        seed: &[u8; 32],
-        dht_relay_url: Option<&Url>,
-    ) -> Result<String, String> {
+    pub fn login(&mut self, seed: &[u8; 32], dht_relay_url: Option<&Url>) -> Result<String, Error> {
         let key_pair = &DeterministicKeyGen::generate(Some(seed));
         let user_id = match self.send_user_root_signature(&SigType::Login, key_pair, dht_relay_url)
         {
             Ok(user_id) => user_id,
-            Err(e) => return Err(format!("Error signing up: {}", e)),
+            Err(e) => return Err(e),
         };
 
         zeroize(key_pair.secret_key().as_mut());
@@ -81,13 +78,13 @@ impl Auth<'_> {
     }
 
     /// Logout from a specific account at the config homeserver
-    pub fn logout(&mut self, user_id: &str) -> Result<String, String> {
-        if self.session_id.is_none() {
-            return Err("No session found".to_string());
+    pub fn logout(&mut self, user_id: &str) -> Result<String, Error> {
+        if self.homeserver_url.is_none() {
+            return Err(Error::NoHomeserver);
         }
 
-        if self.homeserver_url.is_none() {
-            return Err("No homeserver found".to_string());
+        if self.session_id.is_none() {
+            return Err(Error::NoSession);
         }
 
         let url = self
@@ -99,14 +96,18 @@ impl Auth<'_> {
 
         match request(Method::DELETE, url, &mut self.session_id, None, None) {
             Ok(_) => Ok(self.session_id.take().unwrap().clone()),
-            Err(e) => return Err(format!("Error logging out: {}", e)),
+            Err(e) => return Err(Error::FailedToLogout(e)),
         }
     }
 
     /// Examine the current session at the config homeserver
-    pub fn session(&mut self) -> Result<String, String> {
+    pub fn session(&mut self) -> Result<String, Error> {
         if self.homeserver_url.is_none() {
-            return Err("No homeserver found".to_string());
+            return Err(Error::NoHomeserver);
+        }
+
+        if self.session_id.is_none() {
+            return Err(Error::NoSession);
         }
 
         let url = self
@@ -129,7 +130,7 @@ impl Auth<'_> {
                 // let session = serde_json::from_str(response).unwrap();
                 Ok(response.to_string())
             }
-            Err(e) => return Err(format!("Error getting session: {}", e)),
+            Err(e) => return Err(Error::FailedToRetrieveSession(e)),
         }
     }
 
@@ -139,12 +140,9 @@ impl Auth<'_> {
         sig_type: &SigType,
         key_pair: &Keypair,
         dht_relay_url: Option<&Url>,
-    ) -> Result<String, String> {
+    ) -> Result<String, Error> {
         let challenge = self.get_challenge(&key_pair.public_key(), None);
         let signature = key_pair.sign(&challenge.unwrap().signable).to_string();
-        if signature.len() != 128 {
-            return Err("Invalid signature length".to_string());
-        }
         let user_id = key_pair.to_z32();
 
         if self.homeserver_url.is_none() {
@@ -153,7 +151,7 @@ impl Auth<'_> {
                 .resolve_homeserver(&key_pair.public_key(), dht_relay_url)
             {
                 Ok(url) => Some(url),
-                Err(e) => return Err(format!("Error resolving homeserver: {}", e)),
+                Err(e) => return Err(Error::FailedToResolveHomeserver),
             };
         }
 
@@ -186,7 +184,7 @@ impl Auth<'_> {
 
         match response {
             Ok(_) => Ok(user_id.to_string()),
-            Err(e) => return Err(format!("Error sending user root signature: {}", e)),
+            Err(e) => return Err(Error::FailedToSendUserSignature(e)),
         }
     }
 
@@ -195,12 +193,12 @@ impl Auth<'_> {
         &mut self,
         public_key: &PublicKey,
         dht_relay_url: Option<&Url>,
-    ) -> Result<Challenge, String> {
+    ) -> Result<Challenge, Error> {
         if self.homeserver_url.is_none() {
             self.homeserver_url = match self.resolver.resolve_homeserver(&public_key, dht_relay_url)
             {
                 Ok(url) => Some(url),
-                Err(e) => return Err(format!("Error resolving homeserver: {}", e)),
+                Err(e) => return Err(Error::FailedToResolveHomeserver),
             };
         };
 
@@ -213,7 +211,7 @@ impl Auth<'_> {
 
         match request(Method::GET, url.clone(), &mut self.session_id, None, None) {
             Ok(response) => Ok(Challenge::deserialize(response.as_bytes())),
-            Err(e) => return Err(format!("Error getting challenge: {}", e)),
+            Err(e) => return Err(Error::FailedToGetChallenge(e)),
         }
     }
 }

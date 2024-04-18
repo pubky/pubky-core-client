@@ -22,12 +22,34 @@ pub enum ClientError {
     FailedToDeleteData(HTTPError),
 }
 
-// #[derive(thiserror::Error, Debug)]
-// pub enum AuthError {
-//     #[error("Failed to get challenge: {0}")]
-//     FailedToGetChallenge(HTTPError),
-//
-// }
+#[derive(thiserror::Error, Debug)]
+pub enum AuthError {
+    #[error("Failed to get challenge: {0}")]
+    FailedToGetChallenge(HTTPError),
+
+    #[error("Faield to send user signature: {0}")]
+    FailedToSendUserSignature(HTTPError),
+
+    // TODO: add resovler error
+    #[error("Failed to resolve homeserver")]
+    FailedToResolveHomeserver,
+
+    // TODO: add resovler error
+    #[error("Failed to publish homeserver")]
+    FailedToPublishHomeserver,
+
+    #[error("Failed to retrieve session: {0}")]
+    FailedToRetrieveSession(HTTPError),
+
+    #[error("No associated homeserver")]
+    NoHomeserver,
+
+    #[error("No associated session")]
+    NoSession,
+
+    #[error("Failed to logout: {0}")]
+    FailedToLogout(HTTPError),
+}
 
 #[derive(thiserror::Error, Debug)]
 pub enum HTTPError {
@@ -101,4 +123,3 @@ pub enum ChallengeError {
 //     #[error("Already logged out")]
 //     AlreadyLoggedOut,
 // }
-
