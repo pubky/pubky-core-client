@@ -81,7 +81,7 @@ impl Client<'_> {
             .login(&self.seed, self.dht_relay)
         {
             Ok(session_id) => Ok(session_id),
-            Err(_e) => Err(Error::FailedToLogin),
+            Err(e) => Err(Error::FailedToLogin),
         }
     }
 
@@ -133,7 +133,7 @@ impl Client<'_> {
             None,
         ) {
             Ok(_) => Ok(()),
-            Err(e) => return Err(Error::FailedToCreateRepository),
+            Err(e) => return Err(Error::FailedToCreateRepository(e)),
         }
     }
 
@@ -180,7 +180,7 @@ impl Client<'_> {
 
         match response {
             Ok(_) => Ok(url.clone()),
-            Err(e) => return Err(Error::FailedToStoreData),
+            Err(e) => return Err(Error::FailedToStoreData(e)),
         }
     }
 
@@ -209,7 +209,7 @@ impl Client<'_> {
 
         match response {
             Ok(body) => Ok(body),
-            Err(e) => return Err(Error::FailedToRetrieveData),
+            Err(e) => return Err(Error::FailedToRetrieveData(e)),
         }
     }
 
@@ -238,7 +238,7 @@ impl Client<'_> {
 
         match response {
             Ok(_) => Ok(()),
-            Err(e) => return Err(Error::FailedToDeleteData),
+            Err(e) => return Err(Error::FailedToDeleteData(e)),
         }
     }
 
