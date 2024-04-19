@@ -15,7 +15,7 @@ use crate::transport::{
 /// Client accepts optional seed for pubky key generation.
 /// It accepts optional homeserver URL and relay URL.
 ///
-/// It has as a cache which matches {<userId>:(<homeserver_url, sesison_id>)}.
+/// It has as a cache which matches {userId:(homeserver_url, sesison_id)}.
 ///
 /// It has encapsulates an instance of a resolver to publish user's identity to the network, as
 /// well as to lookup other user's homeservers
@@ -133,7 +133,7 @@ impl Client<'_> {
             None,
         ) {
             Ok(_) => Ok(()),
-            Err(e) => return Err(Error::FailedToCreateRepository(e)),
+            Err(e) => Err(Error::FailedToCreateRepository(e)),
         }
     }
 
@@ -180,7 +180,7 @@ impl Client<'_> {
 
         match response {
             Ok(_) => Ok(url.clone()),
-            Err(e) => return Err(Error::FailedToStoreData(e)),
+            Err(e) => Err(Error::FailedToStoreData(e)),
         }
     }
 
@@ -209,7 +209,7 @@ impl Client<'_> {
 
         match response {
             Ok(body) => Ok(body),
-            Err(e) => return Err(Error::FailedToRetrieveData(e)),
+            Err(e) => Err(Error::FailedToRetrieveData(e)),
         }
     }
 
@@ -238,7 +238,7 @@ impl Client<'_> {
 
         match response {
             Ok(_) => Ok(()),
-            Err(e) => return Err(Error::FailedToDeleteData(e)),
+            Err(e) => Err(Error::FailedToDeleteData(e)),
         }
     }
 
@@ -292,7 +292,7 @@ mod tests {
             &testnet.bootstrap,
         );
 
-        let client = Client::new(Some(seed.clone()), None, None, Some(&testnet.bootstrap));
+        let client = Client::new(Some(*seed), None, None, Some(&testnet.bootstrap));
 
         assert_eq!(client.homeservers_cache.len(), 1);
         assert_eq!(
@@ -329,7 +329,7 @@ mod tests {
             &Url::parse(&server.url()).unwrap(),
             &testnet.bootstrap,
         );
-        let mut client = Client::new(Some(seed.clone()), None, None, Some(&testnet.bootstrap));
+        let mut client = Client::new(Some(*seed), None, None, Some(&testnet.bootstrap));
 
         let result = client.create(&user_id, repo_name);
 
@@ -372,9 +372,9 @@ mod tests {
             &testnet.bootstrap,
         );
 
-        let mut client = Client::new(Some(seed.clone()), None, None, Some(&testnet.bootstrap));
+        let mut client = Client::new(Some(*seed), None, None, Some(&testnet.bootstrap));
 
-        let result = client.put(&user_id, repo_name, &folder_path, "test_payload");
+        let result = client.put(&user_id, repo_name, folder_path, "test_payload");
 
         assert_eq!(
             result.unwrap(),
@@ -425,9 +425,9 @@ mod tests {
             &testnet.bootstrap,
         );
 
-        let mut client = Client::new(Some(seed.clone()), None, None, Some(&testnet.bootstrap));
+        let mut client = Client::new(Some(*seed), None, None, Some(&testnet.bootstrap));
 
-        let result = client.get(&user_id, repo_name, &folder_path);
+        let result = client.get(&user_id, repo_name, folder_path);
 
         assert_eq!(result.unwrap(), data.to_string());
         assert_eq!(client.homeservers_cache.len(), 1);
@@ -468,9 +468,9 @@ mod tests {
             &testnet.bootstrap,
         );
 
-        let mut client = Client::new(Some(seed.clone()), None, None, Some(&testnet.bootstrap));
+        let mut client = Client::new(Some(*seed), None, None, Some(&testnet.bootstrap));
 
-        let result = client.delete(&user_id, repo_name, &folder_path);
+        let result = client.delete(&user_id, repo_name, folder_path);
 
         assert!(result.is_ok());
         assert_eq!(client.homeservers_cache.len(), 1);

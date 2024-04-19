@@ -12,7 +12,7 @@ pub fn publish_url<'a>(
     bootstrap: &'a Vec<String>,
 ) -> Resolver<'a> {
     let mut resolver = Resolver::new(None, Some(bootstrap));
-    let _ = resolver.publish(key_pair, url, None).unwrap();
+    resolver.publish(key_pair, url, None).unwrap();
 
     resolver
 }
@@ -29,7 +29,7 @@ pub fn create_server(params: Vec<HttpMockParams>) -> mockito::ServerGuard {
     let mut server = mockito::Server::new();
 
     for param in params {
-        let mut request = server.mock(&param.method.as_str(), param.path);
+        let mut request = server.mock(param.method.as_str(), param.path);
         request = request.with_status(param.status.into());
         request = request.with_body(param.body);
         for (key, value) in param.headers {
@@ -38,7 +38,7 @@ pub fn create_server(params: Vec<HttpMockParams>) -> mockito::ServerGuard {
         request.create();
     }
 
-    return server;
+    server
 }
 
 pub fn create_homeserver_mock(

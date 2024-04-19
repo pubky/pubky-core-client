@@ -65,8 +65,8 @@ mod tests {
 
         let res = request(Method::GET, path, &mut session_id, Some(&headers), body);
 
-        assert_eq!(res.is_ok(), true);
-        assert_eq!(session_id.is_some(), true);
+        assert!(res.is_ok());
+        assert!(session_id.is_some());
         assert_eq!(session_id.unwrap(), "123");
         assert_eq!(res.unwrap(), "test");
     }
