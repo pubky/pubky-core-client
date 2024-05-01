@@ -81,10 +81,9 @@ impl Resolver<'_> {
         let client = if self.bootstrap.is_some() {
             PkarrClient::builder()
                 .bootstrap(self.bootstrap.unwrap())
-                .build()
-                .unwrap()
+                .build()?
         } else {
-            PkarrClient::builder().build().unwrap()
+            PkarrClient::builder().build()?
         };
 
         let mut packet = dns::Packet::new_reply(0);
@@ -166,10 +165,9 @@ impl Resolver<'_> {
         let client = if self.bootstrap.is_some() {
             PkarrClient::builder()
                 .bootstrap(self.bootstrap.unwrap())
-                .build()
-                .unwrap()
+                .build()?
         } else {
-            PkarrClient::builder().build().unwrap()
+            PkarrClient::builder().build()?
         };
 
         match client.resolve(public_key).unwrap() {

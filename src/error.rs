@@ -1,3 +1,5 @@
+use pkarr::Error as PkarrError;
+
 #[derive(thiserror::Error, Debug)]
 pub enum ClientError {
     #[error("Failed to signup: {0}")]
@@ -83,4 +85,13 @@ pub enum DHTError {
 
     #[error("No records found")]
     NoRecordsFound,
+
+    #[error("Pkarr error: {0}")]
+    PkarrError(String),
+}
+
+impl From<PkarrError> for DHTError {
+    fn from(error: PkarrError) -> Self {
+        DHTError::PkarrError(format!("Failed to instantiate Pkarr client: {}", error))
+    }
 }
