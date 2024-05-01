@@ -36,7 +36,10 @@ pub fn request(
             if let Some(s_id) = found_session_id {
                 *session_id = Some(s_id.value().to_string());
             }
-            Ok(res.text().unwrap())
+            match res.text() {
+                Ok(text) => Ok(text),
+                Err(_) => Err(Error::ResponseParseFailed),
+            }
         }
         Err(err) => Err(Error::RequestFailed(err.to_string())),
     }

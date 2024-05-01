@@ -65,6 +65,9 @@ pub enum AuthError {
 pub enum HTTPError {
     #[error("Failed to send HTTP request: {0}")]
     RequestFailed(String),
+
+    #[error("Failed to parse HTTP response")]
+    ResponseParseFailed,
 }
 
 #[derive(thiserror::Error, Debug)]
@@ -98,8 +101,8 @@ pub enum DHTError {
 }
 
 impl From<PkarrError> for DHTError {
-    fn from(error: PkarrError) -> Self {
-        DHTError::PkarrError(format!("Failed to instantiate Pkarr client: {}", error))
+    fn from(e: PkarrError) -> Self {
+        DHTError::PkarrError(format!("Failed to instantiate Pkarr client: {}", e))
     }
 }
 
