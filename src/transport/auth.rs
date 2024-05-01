@@ -25,34 +25,25 @@ impl Auth<'_> {
     }
 
     /// Create a new account at the config homeserver
-    pub fn signup(
-        &mut self,
-        seed: &[u8; 32],
-        dht_relay_url: Option<&Url>,
-    ) -> Result<String, Error> {
+    pub fn signup(&mut self, seed: &[u8; 32]) -> Result<String, Error> {
         let key_pair: &Keypair = &DeterministicKeyGen::generate(Some(seed));
-        let user_id = match self.send_user_root_signature(&SigType::Signup, key_pair, dht_relay_url)
-        {
+        let user_id = match self.send_user_root_signature(&SigType::Signup, key_pair) {
             Ok(user_id) => user_id,
             Err(e) => return Err(e),
         };
 
         if self.homeserver_url.is_none() {
-            self.homeserver_url = match self
-                .resolver
-                .resolve_homeserver(&key_pair.public_key(), dht_relay_url)
-            {
+            self.homeserver_url = match self.resolver.resolve_homeserver(&key_pair.public_key()) {
                 Ok(url) => Some(url),
                 Err(e) => return Err(Error::FailedToResolveHomeserver(e)),
             };
         }
 
         // Re-publish the homeserver url
-        match &self.resolver.publish(
-            key_pair,
-            &self.homeserver_url.clone().unwrap(),
-            dht_relay_url,
-        ) {
+        match &self
+            .resolver
+            .publish(key_pair, &self.homeserver_url.clone().unwrap())
+        {
             Ok(_) => (),
             Err(e) => return Err(Error::FailedToPublishHomeserver(e.clone())),
         };
@@ -64,10 +55,9 @@ impl Auth<'_> {
 
     /// Login to an account at the homeserver
     // TODO: add support for login to others homeservers (not part of SDK yet)
-    pub fn login(&mut self, seed: &[u8; 32], dht_relay_url: Option<&Url>) -> Result<String, Error> {
+    pub fn login(&mut self, seed: &[u8; 32]) -> Result<String, Error> {
         let key_pair = &DeterministicKeyGen::generate(Some(seed));
-        let user_id = match self.send_user_root_signature(&SigType::Login, key_pair, dht_relay_url)
-        {
+        let user_id = match self.send_user_root_signature(&SigType::Login, key_pair) {
             Ok(user_id) => user_id,
             Err(e) => return Err(e),
         };
@@ -139,17 +129,13 @@ impl Auth<'_> {
         &mut self,
         sig_type: &SigType,
         key_pair: &Keypair,
-        dht_relay_url: Option<&Url>,
     ) -> Result<String, Error> {
-        let challenge = self.get_challenge(&key_pair.public_key(), None);
+        let challenge = self.get_challenge(&key_pair.public_key());
         let signature = key_pair.sign(&challenge.unwrap().signable).to_string();
         let user_id = key_pair.to_z32();
 
         if self.homeserver_url.is_none() {
-            self.homeserver_url = match self
-                .resolver
-                .resolve_homeserver(&key_pair.public_key(), dht_relay_url)
-            {
+            self.homeserver_url = match self.resolver.resolve_homeserver(&key_pair.public_key()) {
                 Ok(url) => Some(url),
                 Err(e) => return Err(Error::FailedToResolveHomeserver(e)),
             };
@@ -189,14 +175,9 @@ impl Auth<'_> {
     }
 
     /// Get challenge
-    fn get_challenge(
-        &mut self,
-        public_key: &PublicKey,
-        dht_relay_url: Option<&Url>,
-    ) -> Result<Challenge, Error> {
+    fn get_challenge(&mut self, public_key: &PublicKey) -> Result<Challenge, Error> {
         if self.homeserver_url.is_none() {
-            self.homeserver_url = match self.resolver.resolve_homeserver(public_key, dht_relay_url)
-            {
+            self.homeserver_url = match self.resolver.resolve_homeserver(public_key) {
                 Ok(url) => Some(url),
                 Err(e) => return Err(Error::FailedToResolveHomeserver(e)),
             };
@@ -243,7 +224,7 @@ mod test {
         let mut auth = Auth::new(resolver, None);
 
         // TEST SIGNUP
-        let user_id = auth.signup(seed, None).unwrap();
+        let user_id = auth.signup(seed).unwrap();
         let session_id = "send_signature_signup".to_string();
         assert_eq!(user_id, user_id);
         assert_eq!(
@@ -258,10 +239,10 @@ mod test {
         assert_eq!(res_session_id, "send_signature_signup");
 
         // TEST SIGNUP AGAIN
-        let resolver = Resolver::new(None, Some(&testnet.bootstrap));
+        let resolver = Resolver::new(Some(&testnet.bootstrap));
         let mut auth = Auth::new(resolver, Some(Url::parse(&server.url()).unwrap()));
 
-        let got_user_id = auth.signup(seed, None).unwrap();
+        let got_user_id = auth.signup(seed).unwrap();
         let session_id = "send_signature_signup".to_string();
         assert_eq!(got_user_id, user_id);
         assert_eq!(
@@ -276,7 +257,7 @@ mod test {
         assert_eq!(res_session_id, "send_signature_signup");
 
         // TEST LOGIN
-        let res_user_id = auth.login(seed, None).unwrap();
+        let res_user_id = auth.login(seed).unwrap();
         let session_id = "send_signature_login".to_string();
         assert_eq!(user_id, res_user_id);
         assert_eq!(

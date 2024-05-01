@@ -4,7 +4,6 @@ use reqwest::Url;
 use std::collections::HashMap;
 
 pub struct Resolver<'a> {
-    relay_url: Option<&'a Url>,
     // NOTE: Cache is needed mostly for DHT lookups. It will be implemented in pkarr v2
     // So cache could be removed after update
     // TODO: add suport for different cache strategeies:
@@ -17,21 +16,16 @@ pub struct Resolver<'a> {
 }
 
 impl Resolver<'_> {
-    /// Creates a new resolver, if relay_url is None, it will publish to DHT
-    pub fn new<'a>(relay_url: Option<&'a Url>, bootstrap: Option<&'a Vec<String>>) -> Resolver<'a> {
+    /// Creates a new resolver
+    pub fn new<'a>(bootstrap: Option<&'a Vec<String>>) -> Resolver<'a> {
         Resolver {
-            relay_url,
             cache: HashMap::new(),
             bootstrap,
         }
     }
 
     /// Resolves home server url using DHT or relay (with name '_pubky')
-    pub fn resolve_homeserver(
-        &mut self,
-        public_key: &PublicKey,
-        relay_url: Option<&Url>,
-    ) -> Result<Url, Error> {
+    pub fn resolve_homeserver(&mut self, public_key: &PublicKey) -> Result<Url, Error> {
         if self.cache.contains_key(&public_key.to_string()) {
             return Ok(self
                 .cache
@@ -40,7 +34,7 @@ impl Resolver<'_> {
                 .clone());
         }
 
-        let packet = match self.lookup(public_key, relay_url) {
+        let packet = match self.lookup(public_key) {
             Err(e) => return Err(e),
             Ok(key) => key,
         };
@@ -57,21 +51,21 @@ impl Resolver<'_> {
 
                         match v {
                             None => return Err(Error::NoRecordsFound),
-                            Some(v) => match self
-                                .resolve_homeserver_url(&v.as_str().try_into().unwrap(), relay_url)
-                            {
-                                Err(e) => return Err(e),
-                                Ok(url) => {
-                                    let key = public_key.to_string();
-                                    let _ = &self.cache.insert(key.clone(), url.clone());
+                            Some(v) => {
+                                match self.resolve_homeserver_url(&v.as_str().try_into().unwrap()) {
+                                    Err(e) => return Err(e),
+                                    Ok(url) => {
+                                        let key = public_key.to_string();
+                                        let _ = &self.cache.insert(key.clone(), url.clone());
 
-                                    return Ok(self
-                                        .cache
-                                        .get(&key.clone())
-                                        .expect("Failed to get value from cache")
-                                        .clone());
+                                        return Ok(self
+                                            .cache
+                                            .get(&key.clone())
+                                            .expect("Failed to get value from cache")
+                                            .clone());
+                                    }
                                 }
-                            },
+                            }
                         }
                     }
                 }
@@ -83,18 +77,14 @@ impl Resolver<'_> {
     }
 
     /// Publish record to relay or DHT
-    pub fn publish(
-        &mut self,
-        key_pair: &Keypair,
-        homeserver_url: &Url,
-        relay_url: Option<&Url>,
-    ) -> Result<(), Error> {
+    pub fn publish(&mut self, key_pair: &Keypair, homeserver_url: &Url) -> Result<(), Error> {
         let client = if self.bootstrap.is_some() {
             PkarrClient::builder()
                 .bootstrap(self.bootstrap.unwrap())
                 .build()
+                .unwrap()
         } else {
-            PkarrClient::new()
+            PkarrClient::builder().build().unwrap()
         };
 
         let mut packet = dns::Packet::new_reply(0);
@@ -117,16 +107,7 @@ impl Resolver<'_> {
 
         let signed_packet = SignedPacket::from_packet(key_pair, &packet).unwrap();
 
-        let res = match relay_url {
-            Some(relay_url) => client.relay_put(relay_url, &signed_packet),
-            None => match &self.relay_url {
-                Some(relay_url) => client.relay_put(relay_url, &signed_packet),
-                None => {
-                    let _ = client.publish(&signed_packet);
-                    Ok(())
-                }
-            },
-        };
+        let res = client.publish(&signed_packet);
 
         match res {
             Ok(_) => {
@@ -140,12 +121,8 @@ impl Resolver<'_> {
     }
 
     /// Resolves home server url using DHT or relay (with name '@')
-    fn resolve_homeserver_url(
-        &self,
-        public_key: &PublicKey,
-        relay_url: Option<&Url>,
-    ) -> Result<Url, Error> {
-        let packet = match self.lookup(public_key, relay_url) {
+    fn resolve_homeserver_url(&self, public_key: &PublicKey) -> Result<Url, Error> {
+        let packet = match self.lookup(public_key) {
             Err(e) => return Err(e),
             Ok(key) => key,
         };
@@ -185,29 +162,17 @@ impl Resolver<'_> {
     }
 
     /// Looks up a public key in the relay or DHT
-    fn lookup<'a>(
-        &self,
-        public_key: &PublicKey,
-        relay_url: Option<&Url>,
-    ) -> Result<SignedPacket, Error> {
+    fn lookup<'a>(&self, public_key: &PublicKey) -> Result<SignedPacket, Error> {
         let client = if self.bootstrap.is_some() {
             PkarrClient::builder()
                 .bootstrap(self.bootstrap.unwrap())
                 .build()
+                .unwrap()
         } else {
-            PkarrClient::new()
+            PkarrClient::builder().build().unwrap()
         };
 
-        let public_key = public_key.clone();
-        let entry = match relay_url {
-            Some(relay_url) => client.relay_get(relay_url, public_key.clone()).unwrap(),
-            None => match &self.relay_url {
-                Some(relay_url) => client.relay_get(relay_url, public_key.clone()).unwrap(),
-                None => client.resolve_most_recent(public_key.clone()),
-            },
-        };
-
-        match entry {
+        match client.resolve(public_key).unwrap() {
             None => Err(Error::EntryNotFound(public_key.clone().to_string())),
             Some(entry) => Ok(entry),
         }
@@ -227,11 +192,9 @@ mod tests {
 
         let url = Url::parse("https://datastore.example.com").unwrap();
 
-        let mut resolver = Resolver::new(None, Some(&testnet.bootstrap));
-        resolver.publish(&key, &url, None).unwrap();
-        let res = resolver
-            .resolve_homeserver(&key.public_key(), None)
-            .unwrap();
+        let mut resolver = Resolver::new(Some(&testnet.bootstrap));
+        resolver.publish(&key, &url).unwrap();
+        let res = resolver.resolve_homeserver(&key.public_key()).unwrap();
 
         assert_eq!(res.to_string(), url.to_string());
     }
