@@ -91,7 +91,7 @@ impl Resolver<'_> {
     ) -> Result<(), Error> {
         let client = if self.bootstrap.is_some() {
             PkarrClient::builder()
-                .bootstrap(&self.bootstrap.clone().unwrap())
+                .bootstrap(self.bootstrap.unwrap())
                 .build()
         } else {
             PkarrClient::new()
@@ -115,12 +115,12 @@ impl Resolver<'_> {
             dns::rdata::RData::CNAME(dns::Name::new(homeserver_url.as_str()).unwrap().into()),
         ));
 
-        let signed_packet = SignedPacket::from_packet(&key_pair, &packet).unwrap();
+        let signed_packet = SignedPacket::from_packet(key_pair, &packet).unwrap();
 
         let res = match relay_url {
             Some(relay_url) => client.relay_put(relay_url, &signed_packet),
             None => match &self.relay_url {
-                Some(relay_url) => client.relay_put(&relay_url, &signed_packet),
+                Some(relay_url) => client.relay_put(relay_url, &signed_packet),
                 None => {
                     let _ = client.publish(&signed_packet);
                     Ok(())
@@ -173,7 +173,7 @@ impl Resolver<'_> {
                                 return Ok(Url::parse(format!("{k}{v}").as_str()).unwrap());
                             }
                             // None => return Ok(Url::parse(format!("http://{k}").as_str()).unwrap()),
-                            None => return Ok(Url::parse(&k.as_str()).unwrap()),
+                            None => return Ok(Url::parse(k.as_str()).unwrap()),
                         }
                     }
                 }
@@ -192,7 +192,7 @@ impl Resolver<'_> {
     ) -> Result<SignedPacket, Error> {
         let client = if self.bootstrap.is_some() {
             PkarrClient::builder()
-                .bootstrap(&self.bootstrap.clone().unwrap())
+                .bootstrap(self.bootstrap.unwrap())
                 .build()
         } else {
             PkarrClient::new()
@@ -202,7 +202,7 @@ impl Resolver<'_> {
         let entry = match relay_url {
             Some(relay_url) => client.relay_get(relay_url, public_key.clone()).unwrap(),
             None => match &self.relay_url {
-                Some(relay_url) => client.relay_get(&relay_url, public_key.clone()).unwrap(),
+                Some(relay_url) => client.relay_get(relay_url, public_key.clone()).unwrap(),
                 None => client.resolve_most_recent(public_key.clone()),
             },
         };
@@ -228,7 +228,7 @@ mod tests {
         let url = Url::parse("https://datastore.example.com").unwrap();
 
         let mut resolver = Resolver::new(None, Some(&testnet.bootstrap));
-        let _ = resolver.publish(&key, &url, None).unwrap();
+        resolver.publish(&key, &url, None).unwrap();
         let res = resolver
             .resolve_homeserver(&key.public_key(), None)
             .unwrap();

@@ -48,7 +48,7 @@ impl Auth<'_> {
         }
 
         // Re-publish the homeserver url
-        let _ = match &self.resolver.publish(
+        match &self.resolver.publish(
             key_pair,
             &self.homeserver_url.clone().unwrap(),
             dht_relay_url,
@@ -59,7 +59,7 @@ impl Auth<'_> {
 
         zeroize(key_pair.secret_key().as_mut());
 
-        return Ok(user_id.to_string());
+        Ok(user_id.to_string())
     }
 
     /// Login to an account at the homeserver
@@ -74,7 +74,7 @@ impl Auth<'_> {
 
         zeroize(key_pair.secret_key().as_mut());
 
-        return Ok(user_id);
+        Ok(user_id)
     }
 
     /// Logout from a specific account at the config homeserver
@@ -91,12 +91,12 @@ impl Auth<'_> {
             .homeserver_url
             .clone()
             .unwrap()
-            .join(&format!("/mvp/session/{}", user_id).as_str())
+            .join(format!("/mvp/session/{}", user_id).as_str())
             .unwrap();
 
         match request(Method::DELETE, url, &mut self.session_id, None, None) {
             Ok(_) => Ok(self.session_id.take().unwrap().clone()),
-            Err(e) => return Err(Error::FailedToLogout(e)),
+            Err(e) => Err(Error::FailedToLogout(e)),
         }
     }
 
@@ -130,7 +130,7 @@ impl Auth<'_> {
                 // let session = serde_json::from_str(response).unwrap();
                 Ok(response.to_string())
             }
-            Err(e) => return Err(Error::FailedToRetrieveSession(e)),
+            Err(e) => Err(Error::FailedToRetrieveSession(e)),
         }
     }
 
@@ -172,7 +172,7 @@ impl Auth<'_> {
             "Content-Type",
             "application/octet-stream".try_into().unwrap(),
         );
-        headers.insert("Content-Length", signature.len().try_into().unwrap());
+        headers.insert("Content-Length", signature.len().into());
 
         let response = request(
             Method::PUT,
@@ -184,7 +184,7 @@ impl Auth<'_> {
 
         match response {
             Ok(_) => Ok(user_id.to_string()),
-            Err(e) => return Err(Error::FailedToSendUserSignature(e)),
+            Err(e) => Err(Error::FailedToSendUserSignature(e)),
         }
     }
 
@@ -195,7 +195,7 @@ impl Auth<'_> {
         dht_relay_url: Option<&Url>,
     ) -> Result<Challenge, Error> {
         if self.homeserver_url.is_none() {
-            self.homeserver_url = match self.resolver.resolve_homeserver(&public_key, dht_relay_url)
+            self.homeserver_url = match self.resolver.resolve_homeserver(public_key, dht_relay_url)
             {
                 Ok(url) => Some(url),
                 Err(e) => return Err(Error::FailedToResolveHomeserver(e)),
@@ -211,7 +211,7 @@ impl Auth<'_> {
 
         match request(Method::GET, url.clone(), &mut self.session_id, None, None) {
             Ok(response) => Ok(Challenge::deserialize(response.as_bytes())),
-            Err(e) => return Err(Error::FailedToGetChallenge(e)),
+            Err(e) => Err(Error::FailedToGetChallenge(e)),
         }
     }
 }
