@@ -35,24 +35,26 @@ impl Client<'_> {
         seed: Option<[u8; 32]>,
         homeserver_url: Option<Url>,
         bootstrap: Option<&'a Vec<String>>,
-    ) -> Client<'a> {
+    ) -> Result<Client<'a>, Error> {
         let seed = seed.unwrap_or(crypto::random_bytes(32).try_into().unwrap());
 
         let resolver = Resolver::new(bootstrap);
         let mut auth = Auth::new(resolver, homeserver_url);
 
-        let user_id = auth.signup(&seed).unwrap();
-        let homeserver_url = auth.homeserver_url.clone().unwrap();
+        let (user_id, homeserver_url) = match auth.signup(&seed) {
+            Ok(user_id) => user_id,
+            Err(e) => return Err(Error::FailedToSignup(e)),
+        };
 
         let mut homeservers_cache = HashMap::new();
         homeservers_cache.insert(user_id.clone(), auth);
 
-        Client {
+        Ok(Client {
             seed,
             homeservers_cache,
             homeserver_url,
             user_id,
-        }
+        })
     }
 
     /* GENERAL LOGIC */
@@ -74,10 +76,10 @@ impl Client<'_> {
         match self
             .homeservers_cache
             .get_mut(&self.user_id)
-            .unwrap()
+            .ok_or(Error::UserNotSignedUp)?
             .login(&self.seed)
         {
-            Ok(session_id) => Ok(session_id),
+            Ok((user_id, _homeserver_url)) => Ok(user_id),
             Err(e) => Err(Error::FailedToLogin(e)),
         }
     }
@@ -87,7 +89,7 @@ impl Client<'_> {
         match self
             .homeservers_cache
             .get_mut(&self.user_id)
-            .unwrap()
+            .ok_or(Error::UserNotSignedUp)?
             .logout(&self.user_id)
         {
             Ok(session_id) => Ok(session_id),
@@ -100,7 +102,7 @@ impl Client<'_> {
         match self
             .homeservers_cache
             .get_mut(&self.user_id)
-            .unwrap()
+            .ok_or(Error::UserNotSignedUp)?
             .session()
         {
             Ok(session) => Ok(session),
@@ -115,7 +117,7 @@ impl Client<'_> {
         let url = &self
             .homeservers_cache
             .get(user_id)
-            .unwrap()
+            .ok_or(Error::UserNotSignedUp)?
             .homeserver_url
             .clone()
             .unwrap()
@@ -125,7 +127,11 @@ impl Client<'_> {
         match request(
             Method::PUT,
             url.clone(),
-            &mut self.homeservers_cache.get_mut(user_id).unwrap().session_id,
+            &mut self
+                .homeservers_cache
+                .get_mut(user_id)
+                .ok_or(Error::UserNotSignedUp)?
+                .session_id,
             None,
             None,
         ) {
@@ -145,7 +151,7 @@ impl Client<'_> {
         let url = &self
             .homeservers_cache
             .get(user_id)
-            .unwrap()
+            .ok_or(Error::UserNotSignedUp)?
             .homeserver_url
             .clone()
             .unwrap()
@@ -170,7 +176,11 @@ impl Client<'_> {
         let response = request(
             Method::PUT,
             url.clone(),
-            &mut self.homeservers_cache.get_mut(user_id).unwrap().session_id,
+            &mut self
+                .homeservers_cache
+                .get_mut(user_id)
+                .ok_or(Error::UserNotSignedUp)?
+                .session_id,
             Some(&headers),
             Some(payload.to_string()),
         );
@@ -186,7 +196,7 @@ impl Client<'_> {
         let url = &self
             .homeservers_cache
             .get(user_id)
-            .unwrap()
+            .ok_or(Error::UserNotSignedUp)?
             .homeserver_url
             .clone()
             .unwrap()
@@ -199,7 +209,11 @@ impl Client<'_> {
         let response = request(
             Method::GET,
             url.clone(),
-            &mut self.homeservers_cache.get_mut(user_id).unwrap().session_id,
+            &mut self
+                .homeservers_cache
+                .get_mut(user_id)
+                .ok_or(Error::UserNotSignedUp)?
+                .session_id,
             None,
             None,
         );
@@ -215,7 +229,7 @@ impl Client<'_> {
         let url = &self
             .homeservers_cache
             .get(user_id)
-            .unwrap()
+            .ok_or(Error::UserNotSignedUp)?
             .homeserver_url
             .clone()
             .unwrap()
@@ -228,7 +242,11 @@ impl Client<'_> {
         let response = request(
             Method::DELETE,
             url.clone(),
-            &mut self.homeservers_cache.get_mut(user_id).unwrap().session_id,
+            &mut self
+                .homeservers_cache
+                .get_mut(user_id)
+                .ok_or(Error::UserNotSignedUp)?
+                .session_id,
             None,
             None,
         );
@@ -289,7 +307,7 @@ mod tests {
             &testnet.bootstrap,
         );
 
-        let client = Client::new(Some(*seed), None, Some(&testnet.bootstrap));
+        let client = Client::new(Some(*seed), None, Some(&testnet.bootstrap)).unwrap();
 
         assert_eq!(client.homeservers_cache.len(), 1);
         assert_eq!(
@@ -326,7 +344,7 @@ mod tests {
             &Url::parse(&server.url()).unwrap(),
             &testnet.bootstrap,
         );
-        let mut client = Client::new(Some(*seed), None, Some(&testnet.bootstrap));
+        let mut client = Client::new(Some(*seed), None, Some(&testnet.bootstrap)).unwrap();
 
         let result = client.create(&user_id, repo_name);
 
@@ -369,7 +387,7 @@ mod tests {
             &testnet.bootstrap,
         );
 
-        let mut client = Client::new(Some(*seed), None, Some(&testnet.bootstrap));
+        let mut client = Client::new(Some(*seed), None, Some(&testnet.bootstrap)).unwrap();
 
         let result = client.put(&user_id, repo_name, folder_path, "test_payload");
 
@@ -422,7 +440,7 @@ mod tests {
             &testnet.bootstrap,
         );
 
-        let mut client = Client::new(Some(*seed), None, Some(&testnet.bootstrap));
+        let mut client = Client::new(Some(*seed), None, Some(&testnet.bootstrap)).unwrap();
 
         let result = client.get(&user_id, repo_name, folder_path);
 
@@ -465,7 +483,7 @@ mod tests {
             &testnet.bootstrap,
         );
 
-        let mut client = Client::new(Some(*seed), None, Some(&testnet.bootstrap));
+        let mut client = Client::new(Some(*seed), None, Some(&testnet.bootstrap)).unwrap();
 
         let result = client.delete(&user_id, repo_name, folder_path);
 

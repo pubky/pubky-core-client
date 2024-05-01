@@ -1,5 +1,8 @@
 #[derive(thiserror::Error, Debug)]
 pub enum ClientError {
+    #[error("Failed to signup: {0}")]
+    FailedToSignup(AuthError),
+
     #[error("Failed to login: {0}")]
     FailedToLogin(AuthError),
 
@@ -20,6 +23,12 @@ pub enum ClientError {
 
     #[error("Failed to delete data from repository: {0}")]
     FailedToDeleteData(HTTPError),
+
+    #[error("User was not signed up")]
+    UserNotSignedUp,
+
+    #[error("Provided input parameters can not be converrted to a valid URL")]
+    InvalidInputForUrl,
 }
 
 #[derive(thiserror::Error, Debug)]
