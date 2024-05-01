@@ -13,7 +13,7 @@ use crate::transport::{
 /// over user's data in pubky network.
 ///
 /// Client accepts optional seed for pubky key generation.
-/// It accepts optional homeserver URL and relay URL.
+/// It accepts optional homeserver URL.
 ///
 /// It has as a cache which matches {userId:(homeserver_url, sesison_id)}.
 ///
@@ -28,22 +28,20 @@ pub struct Client<'a> {
     pub user_id: String,     // own user id
     seed: [u8; 32],
     homeservers_cache: HashMap<String, Auth<'a>>, // homervers of others
-    dht_relay: Option<&'a Url>,
 }
 
 impl Client<'_> {
     pub fn new<'a>(
         seed: Option<[u8; 32]>,
         homeserver_url: Option<Url>,
-        dht_relay: Option<&'a Url>,
         bootstrap: Option<&'a Vec<String>>,
     ) -> Client<'a> {
         let seed = seed.unwrap_or(crypto::random_bytes(32).try_into().unwrap());
 
-        let resolver = Resolver::new(dht_relay, bootstrap);
+        let resolver = Resolver::new(bootstrap);
         let mut auth = Auth::new(resolver, homeserver_url);
 
-        let user_id = auth.signup(&seed, None).unwrap();
+        let user_id = auth.signup(&seed).unwrap();
         let homeserver_url = auth.homeserver_url.clone().unwrap();
 
         let mut homeservers_cache = HashMap::new();
@@ -54,7 +52,6 @@ impl Client<'_> {
             homeservers_cache,
             homeserver_url,
             user_id,
-            dht_relay,
         }
     }
 
@@ -78,7 +75,7 @@ impl Client<'_> {
             .homeservers_cache
             .get_mut(&self.user_id)
             .unwrap()
-            .login(&self.seed, self.dht_relay)
+            .login(&self.seed)
         {
             Ok(session_id) => Ok(session_id),
             Err(e) => Err(Error::FailedToLogin(e)),
@@ -292,7 +289,7 @@ mod tests {
             &testnet.bootstrap,
         );
 
-        let client = Client::new(Some(*seed), None, None, Some(&testnet.bootstrap));
+        let client = Client::new(Some(*seed), None, Some(&testnet.bootstrap));
 
         assert_eq!(client.homeservers_cache.len(), 1);
         assert_eq!(
@@ -329,7 +326,7 @@ mod tests {
             &Url::parse(&server.url()).unwrap(),
             &testnet.bootstrap,
         );
-        let mut client = Client::new(Some(*seed), None, None, Some(&testnet.bootstrap));
+        let mut client = Client::new(Some(*seed), None, Some(&testnet.bootstrap));
 
         let result = client.create(&user_id, repo_name);
 
@@ -372,7 +369,7 @@ mod tests {
             &testnet.bootstrap,
         );
 
-        let mut client = Client::new(Some(*seed), None, None, Some(&testnet.bootstrap));
+        let mut client = Client::new(Some(*seed), None, Some(&testnet.bootstrap));
 
         let result = client.put(&user_id, repo_name, folder_path, "test_payload");
 
@@ -425,7 +422,7 @@ mod tests {
             &testnet.bootstrap,
         );
 
-        let mut client = Client::new(Some(*seed), None, None, Some(&testnet.bootstrap));
+        let mut client = Client::new(Some(*seed), None, Some(&testnet.bootstrap));
 
         let result = client.get(&user_id, repo_name, folder_path);
 
@@ -468,7 +465,7 @@ mod tests {
             &testnet.bootstrap,
         );
 
-        let mut client = Client::new(Some(*seed), None, None, Some(&testnet.bootstrap));
+        let mut client = Client::new(Some(*seed), None, Some(&testnet.bootstrap));
 
         let result = client.delete(&user_id, repo_name, folder_path);
 

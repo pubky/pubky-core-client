@@ -11,8 +11,8 @@ pub fn publish_url<'a>(
     url: &'a Url,
     bootstrap: &'a Vec<String>,
 ) -> Resolver<'a> {
-    let mut resolver = Resolver::new(None, Some(bootstrap));
-    resolver.publish(key_pair, url, None).unwrap();
+    let mut resolver = Resolver::new(Some(bootstrap));
+    resolver.publish(key_pair, url).unwrap();
 
     resolver
 }
