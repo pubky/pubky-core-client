@@ -24,8 +24,8 @@ impl Auth<'_> {
         }
     }
 
-    /// Create a new account at the config homeserver
-    pub fn signup(&mut self, seed: &[u8; 32]) -> Result<String, Error> {
+    /// Create a new account at the homeserver
+    pub fn signup(&mut self, seed: &[u8; 32]) -> Result<(String, Url), Error> {
         let key_pair: &Keypair = &DeterministicKeyGen::generate(Some(seed));
         let user_id = match self.send_user_root_signature(&SigType::Signup, key_pair) {
             Ok(user_id) => user_id,
@@ -50,12 +50,12 @@ impl Auth<'_> {
 
         zeroize(key_pair.secret_key().as_mut());
 
-        Ok(user_id.to_string())
+        Ok((user_id.to_string(), self.homeserver_url.clone().unwrap()))
     }
 
     /// Login to an account at the homeserver
     // TODO: add support for login to others homeservers (not part of SDK yet)
-    pub fn login(&mut self, seed: &[u8; 32]) -> Result<String, Error> {
+    pub fn login(&mut self, seed: &[u8; 32]) -> Result<(String, Url), Error> {
         let key_pair = &DeterministicKeyGen::generate(Some(seed));
         let user_id = match self.send_user_root_signature(&SigType::Login, key_pair) {
             Ok(user_id) => user_id,
@@ -64,7 +64,7 @@ impl Auth<'_> {
 
         zeroize(key_pair.secret_key().as_mut());
 
-        Ok(user_id)
+        Ok((user_id, self.homeserver_url.clone().unwrap()))
     }
 
     /// Logout from a specific account at the config homeserver
@@ -224,12 +224,12 @@ mod test {
         let mut auth = Auth::new(resolver, None);
 
         // TEST SIGNUP
-        let user_id = auth.signup(seed).unwrap();
+        let (user_id, homeserver_url) = auth.signup(seed).unwrap();
         let session_id = "send_signature_signup".to_string();
         assert_eq!(user_id, user_id);
         assert_eq!(
-            auth.homeserver_url,
-            Some(Url::parse(&server.url()).unwrap())
+            homeserver_url,
+            Url::parse(&server.url()).unwrap()
         );
         assert_eq!(auth.session_id, Some(session_id));
 
@@ -242,12 +242,12 @@ mod test {
         let resolver = Resolver::new(Some(&testnet.bootstrap));
         let mut auth = Auth::new(resolver, Some(Url::parse(&server.url()).unwrap()));
 
-        let got_user_id = auth.signup(seed).unwrap();
+        let (got_user_id, got_homeserver_url) = auth.signup(seed).unwrap();
         let session_id = "send_signature_signup".to_string();
         assert_eq!(got_user_id, user_id);
         assert_eq!(
-            auth.homeserver_url,
-            Some(Url::parse(&server.url()).unwrap())
+            got_homeserver_url,
+            Url::parse(&server.url()).unwrap()
         );
         assert_eq!(auth.session_id, Some(session_id));
 
@@ -257,12 +257,12 @@ mod test {
         assert_eq!(res_session_id, "send_signature_signup");
 
         // TEST LOGIN
-        let res_user_id = auth.login(seed).unwrap();
+        let (res_user_id, homeserver_url) = auth.login(seed).unwrap();
         let session_id = "send_signature_login".to_string();
         assert_eq!(user_id, res_user_id);
         assert_eq!(
-            auth.homeserver_url,
-            Some(Url::parse(&server.url()).unwrap())
+            homeserver_url,
+            Url::parse(&server.url()).unwrap()
         );
         assert_eq!(auth.session_id, Some(session_id));
 
