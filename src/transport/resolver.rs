@@ -104,7 +104,7 @@ impl Resolver<'_> {
             dns::rdata::RData::CNAME(dns::Name::new(homeserver_url.as_str()).unwrap().into()),
         ));
 
-        let signed_packet = SignedPacket::from_packet(key_pair, &packet).unwrap();
+        let signed_packet = SignedPacket::from_packet(key_pair, &packet)?;
 
         let res = client.publish(&signed_packet);
 
@@ -132,10 +132,7 @@ impl Resolver<'_> {
             match &record.rdata {
                 dns::rdata::RData::CNAME(cname) => {
                     // See https://docs.rs/simple-dns/latest/simple_dns/rdata/struct.CNAME.html#fields
-                    return Ok(
-                        // Url::parse(format!("https://{}", cname.0.to_string()).as_str()).unwrap(),
-                        Url::parse(&cname.0.to_string()).unwrap(),
-                    );
+                    return Ok(Url::parse(&cname.0.to_string())?);
                 }
                 dns::rdata::RData::TXT(txt) => {
                     // See https://docs.rs/simple-dns/latest/simple_dns/rdata/struct.TXT.html#method.attributes
@@ -144,12 +141,8 @@ impl Resolver<'_> {
                             continue;
                         }
                         match v {
-                            Some(v) => {
-                                // return Ok(Url::parse(format!("http://{k}{v}").as_str()).unwrap())
-                                return Ok(Url::parse(format!("{k}{v}").as_str()).unwrap());
-                            }
-                            // None => return Ok(Url::parse(format!("http://{k}").as_str()).unwrap()),
-                            None => return Ok(Url::parse(k.as_str()).unwrap()),
+                            Some(v) => return Ok(Url::parse(format!("{k}{v}").as_str())?),
+                            None => return Ok(Url::parse(k.as_str())?),
                         }
                     }
                 }
@@ -170,9 +163,12 @@ impl Resolver<'_> {
             PkarrClient::builder().build()?
         };
 
-        match client.resolve(public_key).unwrap() {
-            None => Err(Error::EntryNotFound(public_key.clone().to_string())),
-            Some(entry) => Ok(entry),
+        match client.resolve(public_key) {
+            Ok(entry) => match entry {
+                Some(entry) => Ok(entry),
+                None => Err(Error::EntryNotFound(public_key.clone().to_string())),
+            },
+            Err(e) => Err(Error::FailedToResolveHomeserverUrl(e.to_string())),
         }
     }
 }

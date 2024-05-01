@@ -1,4 +1,5 @@
 use pkarr::Error as PkarrError;
+use url::ParseError as UrlParseError;
 
 #[derive(thiserror::Error, Debug)]
 pub enum ClientError {
@@ -88,10 +89,22 @@ pub enum DHTError {
 
     #[error("Pkarr error: {0}")]
     PkarrError(String),
+
+    #[error("Failed to resolve homeserver URL: {0}")]
+    FailedToResolveHomeserverUrl(String),
+
+    #[error("Failed to parse DNS record as URL")]
+    FailedToParseDnsRecordAsUrl,
 }
 
 impl From<PkarrError> for DHTError {
     fn from(error: PkarrError) -> Self {
         DHTError::PkarrError(format!("Failed to instantiate Pkarr client: {}", error))
+    }
+}
+
+impl From<UrlParseError> for DHTError {
+    fn from(_: UrlParseError) -> Self {
+        DHTError::FailedToParseDnsRecordAsUrl
     }
 }
