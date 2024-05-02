@@ -987,25 +987,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "pdk"
-version = "0.1.0"
-dependencies = [
- "blake3",
- "ed25519-dalek",
- "mainline 2.0.0-rc1 (git+https://github.com/Nuhvi/mainline?branch=v2)",
- "mockito",
- "pkarr",
- "rand",
- "reqwest",
- "serde",
- "serde_json",
- "thiserror",
- "url",
- "uuid",
- "z32",
-]
-
-[[package]]
 name = "percent-encoding"
 version = "2.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1110,6 +1091,25 @@ name = "psl-types"
 version = "2.0.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "33cb294fe86a74cbcf50d4445b37da762029549ebeea341421c7c70370f86cac"
+
+[[package]]
+name = "pubky-core-client"
+version = "0.1.0"
+dependencies = [
+ "blake3",
+ "ed25519-dalek",
+ "mainline 2.0.0-rc1 (git+https://github.com/Nuhvi/mainline?branch=v2)",
+ "mockito",
+ "pkarr",
+ "rand",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "url",
+ "uuid",
+ "z32",
+]
 
 [[package]]
 name = "publicsuffix"
