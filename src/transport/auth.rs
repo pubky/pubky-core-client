@@ -3,6 +3,7 @@ use crate::transport::challenge::Challenge;
 use crate::transport::crypto::{zeroize, DeterministicKeyGen, Keypair, PublicKey};
 use crate::transport::http::{request, HeaderMap, Method, Url};
 use crate::transport::resolver::Resolver;
+use crate::helpers::Path;
 
 pub enum SigType {
     Signup,
@@ -74,7 +75,7 @@ impl Auth<'_> {
             .homeserver_url
             .clone()
             .unwrap()
-            .join(format!("/mvp/session/{}", user_id).as_str())
+            .join(&Path::get_session_string(Some(user_id)))
             .unwrap();
 
         match request(Method::DELETE, url, &mut self.session_id, None, None) {
@@ -97,7 +98,7 @@ impl Auth<'_> {
             .homeserver_url
             .clone()
             .unwrap()
-            .join("/mvp/session")
+            .join(&Path::get_session_string(None))
             .unwrap();
 
         match request(Method::GET, url.clone(), &mut self.session_id, None, None) {
@@ -128,8 +129,8 @@ impl Auth<'_> {
         let user_id = key_pair.to_z32();
 
         let path = match sig_type {
-            SigType::Signup => format!("/mvp/users/{}/pkarr", user_id),
-            SigType::Login => format!("/mvp/session/{}", user_id),
+            SigType::Signup => Path::get_signup_string(&user_id),
+            SigType::Login => Path::get_session_string(Some(&user_id)),
         };
 
         let url = self
@@ -173,7 +174,7 @@ impl Auth<'_> {
             .homeserver_url
             .clone()
             .unwrap()
-            .join("/mvp/challenge")
+            .join(&Path::get_challenge_string())
             .unwrap();
 
         match request(Method::GET, url.clone(), &mut self.session_id, None, None) {

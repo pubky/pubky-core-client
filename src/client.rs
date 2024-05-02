@@ -2,6 +2,7 @@ use crate::error::ClientError as Error;
 
 use std::collections::HashMap;
 
+use crate::helpers::Path;
 use crate::transport::{
     auth::Auth,
     crypto,
@@ -53,7 +54,7 @@ impl Client<'_> {
             Ok(user_id) => {
                 let _ = &self.homeservers_cache.insert(user_id.clone(), auth);
                 Ok(user_id)
-            },
+            }
             Err(e) => return Err(Error::FailedToSignup(e)),
         }
     }
@@ -65,11 +66,11 @@ impl Client<'_> {
         let resolver = Resolver::new(self.bootstrap);
         let mut auth = Auth::new(resolver, None);
 
-         match auth.login(&seed) {
+        match auth.login(&seed) {
             Ok(user_id) => {
                 let _ = &self.homeservers_cache.insert(user_id.clone(), auth);
                 Ok(user_id)
-            },
+            }
             Err(e) => return Err(Error::FailedToLogin(e)),
         }
     }
@@ -111,7 +112,7 @@ impl Client<'_> {
             .homeserver_url
             .clone()
             .unwrap()
-            .join(&format!("/mvp/users/{}/repos/{}", user_id, repo_name))
+            .join(&Path::get_repo_string(user_id, repo_name, None))
             .unwrap();
 
         match request(
@@ -145,12 +146,8 @@ impl Client<'_> {
             .homeserver_url
             .clone()
             .unwrap()
-            .join(&format!(
-                "/mvp/users/{}/repos/{}/{}",
-                user_id, repo_name, path
-            ))
+            .join(&Path::get_repo_string(user_id, repo_name, Some(path)))
             .unwrap();
-
 
         let mut headers = HeaderMap::new();
         headers.insert(
@@ -189,10 +186,7 @@ impl Client<'_> {
             .homeserver_url
             .clone()
             .unwrap()
-            .join(&format!(
-                "/mvp/users/{}/repos/{}/{}",
-                user_id, repo_name, path
-            ))
+            .join(&Path::get_repo_string(user_id, repo_name, Some(path)))
             .unwrap();
 
         let response = request(
@@ -222,10 +216,7 @@ impl Client<'_> {
             .homeserver_url
             .clone()
             .unwrap()
-            .join(&format!(
-                "/mvp/users/{}/repos/{}/{}",
-                user_id, repo_name, path
-            ))
+            .join(&Path::get_repo_string(user_id, repo_name, Some(path)))
             .unwrap();
 
         let response = request(
@@ -404,7 +395,7 @@ mod tests {
 
         let result = client.create(&user_id, repo_name);
 
-        assert_eq!(result.unwrap(), ());
+        assert!(result.is_ok());
         assert_eq!(client.homeservers_cache.len(), 1);
         assert_eq!(
             client
@@ -452,9 +443,11 @@ mod tests {
             result.unwrap(),
             Url::parse(&server.url())
                 .unwrap()
-                .join(
-                    format!("/mvp/users/{}/repos/{}/{}", user_id, repo_name, folder_path).as_str()
-                )
+                .join(&Path::get_repo_string(
+                    &user_id,
+                    repo_name,
+                    Some(folder_path)
+                ))
                 .unwrap()
         );
         assert_eq!(client.homeservers_cache.len(), 1);
