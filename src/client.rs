@@ -33,12 +33,12 @@ impl Client<'_> {
     pub fn new<'a>(
         // homeserver_url: Option<Url>,
         bootstrap: Option<&'a Vec<String>>,
-    ) -> Result<Client<'a>, Error> {
-        Ok(Client {
+    ) -> Client<'a> {
+        Client {
             homeservers_cache: HashMap::new(),
             // homeserver_url,
             bootstrap,
-        })
+        }
     }
 
     /* "AUTH" RELATED LOGIC */
@@ -49,14 +49,13 @@ impl Client<'_> {
         let resolver = Resolver::new(self.bootstrap);
         let mut auth = Auth::new(resolver, None);
 
-        let user_id = match auth.signup(&seed) {
-            Ok(res) => res,
+        match auth.signup(&seed) {
+            Ok(user_id) => {
+                let _ = &self.homeservers_cache.insert(user_id.clone(), auth);
+                Ok(user_id)
+            },
             Err(e) => return Err(Error::FailedToSignup(e)),
-        };
-
-        let _ = &self.homeservers_cache.insert(user_id.clone(), auth);
-
-        return Ok(user_id);
+        }
     }
 
     /// login
@@ -66,14 +65,13 @@ impl Client<'_> {
         let resolver = Resolver::new(self.bootstrap);
         let mut auth = Auth::new(resolver, None);
 
-        let user_id = match auth.login(&seed) {
-            Ok(res) => res,
+         match auth.login(&seed) {
+            Ok(user_id) => {
+                let _ = &self.homeservers_cache.insert(user_id.clone(), auth);
+                Ok(user_id)
+            },
             Err(e) => return Err(Error::FailedToLogin(e)),
-        };
-
-        let _ = &self.homeservers_cache.insert(user_id.clone(), auth);
-
-        return Ok(user_id);
+        }
     }
 
     /// logout
@@ -153,7 +151,6 @@ impl Client<'_> {
             ))
             .unwrap();
 
-        println!("Calling: {}", url);
 
         let mut headers = HeaderMap::new();
         headers.insert(
@@ -299,9 +296,36 @@ mod tests {
             &testnet.bootstrap,
         );
 
-        let client = Client::new(Some(&testnet.bootstrap)).unwrap();
+        let client = Client::new(Some(&testnet.bootstrap));
 
-        assert_eq!(client.homeservers_cache.len(), 1);
+        assert_eq!(client.homeservers_cache.len(), 0);
+    }
+
+    #[test]
+    fn test_client_signup() {
+        let testnet = Testnet::new(10);
+        let seed = b"it is a seed for key generation!";
+
+        let key_pair: Keypair = DeterministicKeyGen::generate(Some(seed));
+        let user_id = key_pair.to_z32();
+        let server = create_homeserver_mock(
+            user_id.to_string(),
+            "repo_name".to_string(),
+            "folder_path".to_string(),
+            "data".to_string(),
+        );
+        let _ = publish_url(
+            &key_pair,
+            &Url::parse(&server.url()).unwrap(),
+            &testnet.bootstrap,
+        );
+
+        let mut client = Client::new(Some(&testnet.bootstrap));
+
+        assert_eq!(client.homeservers_cache.len(), 0);
+
+        client.signup(Some(*seed)).unwrap();
+
         assert_eq!(
             client
                 .homeservers_cache
@@ -313,6 +337,45 @@ mod tests {
         assert_eq!(
             client.homeservers_cache.get(&user_id).unwrap().session_id,
             Some("send_signature_signup".to_string())
+        );
+    }
+
+    #[test]
+    fn test_client_login() {
+        let testnet = Testnet::new(10);
+        let seed = b"it is a seed for key generation!";
+
+        let key_pair: Keypair = DeterministicKeyGen::generate(Some(seed));
+        let user_id = key_pair.to_z32();
+        let server = create_homeserver_mock(
+            user_id.to_string(),
+            "repo_name".to_string(),
+            "folder_path".to_string(),
+            "data".to_string(),
+        );
+        let _ = publish_url(
+            &key_pair,
+            &Url::parse(&server.url()).unwrap(),
+            &testnet.bootstrap,
+        );
+
+        let mut client = Client::new(Some(&testnet.bootstrap));
+
+        assert_eq!(client.homeservers_cache.len(), 0);
+
+        client.login(Some(*seed)).unwrap();
+
+        assert_eq!(
+            client
+                .homeservers_cache
+                .get(&user_id)
+                .unwrap()
+                .homeserver_url,
+            Some(Url::parse(&server.url()).unwrap())
+        );
+        assert_eq!(
+            client.homeservers_cache.get(&user_id).unwrap().session_id,
+            Some("send_signature_login".to_string())
         );
     }
 
@@ -336,7 +399,8 @@ mod tests {
             &Url::parse(&server.url()).unwrap(),
             &testnet.bootstrap,
         );
-        let mut client = Client::new(Some(&testnet.bootstrap)).unwrap();
+        let mut client = Client::new(Some(&testnet.bootstrap));
+        let user_id = client.login(Some(*seed)).unwrap();
 
         let result = client.create(&user_id, repo_name);
 
@@ -379,7 +443,8 @@ mod tests {
             &testnet.bootstrap,
         );
 
-        let mut client = Client::new(Some(&testnet.bootstrap)).unwrap();
+        let mut client = Client::new(Some(&testnet.bootstrap));
+        let user_id = client.login(Some(*seed)).unwrap();
 
         let result = client.put(&user_id, repo_name, folder_path, "test_payload");
 
@@ -432,7 +497,8 @@ mod tests {
             &testnet.bootstrap,
         );
 
-        let mut client = Client::new(Some(&testnet.bootstrap)).unwrap();
+        let mut client = Client::new(Some(&testnet.bootstrap));
+        let user_id = client.login(Some(*seed)).unwrap();
 
         let result = client.get(&user_id, repo_name, folder_path);
 
@@ -475,7 +541,8 @@ mod tests {
             &testnet.bootstrap,
         );
 
-        let mut client = Client::new(Some(&testnet.bootstrap)).unwrap();
+        let mut client = Client::new(Some(&testnet.bootstrap));
+        let user_id = client.login(Some(*seed)).unwrap();
 
         let result = client.delete(&user_id, repo_name, folder_path);
 

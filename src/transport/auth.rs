@@ -50,14 +50,14 @@ impl Auth<'_> {
     // TODO: add support for login to others homeservers (not part of SDK yet)
     pub fn login(&mut self, seed: &[u8; 32]) -> Result<String, Error> {
         let key_pair = &DeterministicKeyGen::generate(Some(seed));
-        let user_id = match self.send_user_root_signature(&SigType::Login, key_pair) {
-            Ok(user_id) => user_id,
+
+        match self.send_user_root_signature(&SigType::Login, key_pair) {
+            Ok(user_id) => {
+                zeroize(key_pair.secret_key().as_mut());
+                Ok(user_id.to_string())
+            },
             Err(e) => return Err(e),
-        };
-
-        zeroize(key_pair.secret_key().as_mut());
-
-        Ok(user_id.to_string())
+        }
     }
 
     /// Logout from a specific account at the config homeserver
