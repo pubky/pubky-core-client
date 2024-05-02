@@ -24,60 +24,65 @@ use crate::transport::{
 /// The CRUD operations for homeserver are performed using http requests.
 
 pub struct Client<'a> {
-    pub homeserver_url: Url, // own homeserver
-    pub user_id: String,     // own user id
-    seed: [u8; 32],
+    // pub homeserver_url: Option<Url>, // own homeserver
     homeservers_cache: HashMap<String, Auth<'a>>, // homervers of others
+    bootstrap: Option<&'a Vec<String>>,
 }
 
 impl Client<'_> {
     pub fn new<'a>(
-        seed: Option<[u8; 32]>,
-        homeserver_url: Option<Url>,
+        // homeserver_url: Option<Url>,
         bootstrap: Option<&'a Vec<String>>,
     ) -> Result<Client<'a>, Error> {
-        let seed = seed.unwrap_or(crypto::random_bytes(32).try_into().unwrap());
-
-        let resolver = Resolver::new(bootstrap);
-        let mut auth = Auth::new(resolver, homeserver_url);
-
-        let (user_id, homeserver_url) = match auth.signup(&seed) {
-            Ok(user_id) => user_id,
-            Err(e) => return Err(Error::FailedToSignup(e)),
-        };
-
-        let mut homeservers_cache = HashMap::new();
-        homeservers_cache.insert(user_id.clone(), auth);
-
         Ok(Client {
-            seed,
-            homeservers_cache,
-            homeserver_url,
-            user_id,
+            homeservers_cache: HashMap::new(),
+            // homeserver_url,
+            bootstrap,
         })
     }
 
     /* "AUTH" RELATED LOGIC */
+    /// signup
+    pub fn signup(&mut self, seed: Option<[u8; 32]>) -> Result<String, Error> {
+        let seed = seed.unwrap_or(crypto::random_bytes(32).try_into().unwrap());
+
+        let resolver = Resolver::new(self.bootstrap);
+        let mut auth = Auth::new(resolver, None);
+
+        let user_id = match auth.signup(&seed) {
+            Ok(res) => res,
+            Err(e) => return Err(Error::FailedToSignup(e)),
+        };
+
+        let _ = &self.homeservers_cache.insert(user_id.clone(), auth);
+
+        return Ok(user_id);
+    }
+
     /// login
-    pub fn login(&mut self) -> Result<String, Error> {
-        match self
-            .homeservers_cache
-            .get_mut(&self.user_id)
-            .ok_or(Error::UserNotSignedUp)?
-            .login(&self.seed)
-        {
-            Ok((user_id, _homeserver_url)) => Ok(user_id),
-            Err(e) => Err(Error::FailedToLogin(e)),
-        }
+    pub fn login(&mut self, seed: Option<[u8; 32]>) -> Result<String, Error> {
+        let seed = seed.unwrap_or(crypto::random_bytes(32).try_into().unwrap());
+
+        let resolver = Resolver::new(self.bootstrap);
+        let mut auth = Auth::new(resolver, None);
+
+        let user_id = match auth.login(&seed) {
+            Ok(res) => res,
+            Err(e) => return Err(Error::FailedToLogin(e)),
+        };
+
+        let _ = &self.homeservers_cache.insert(user_id.clone(), auth);
+
+        return Ok(user_id);
     }
 
     /// logout
-    pub fn logout(&mut self) -> Result<String, Error> {
+    pub fn logout(&mut self, user_id: String) -> Result<String, Error> {
         match self
             .homeservers_cache
-            .get_mut(&self.user_id)
+            .get_mut(&user_id)
             .ok_or(Error::UserNotSignedUp)?
-            .logout(&self.user_id)
+            .logout(&user_id)
         {
             Ok(session_id) => Ok(session_id),
             Err(e) => Err(Error::FailedToLogout(e)),
@@ -85,10 +90,10 @@ impl Client<'_> {
     }
 
     /// session
-    pub fn session(&mut self) -> Result<String, Error> {
+    pub fn session(&mut self, user_id: String) -> Result<String, Error> {
         match self
             .homeservers_cache
-            .get_mut(&self.user_id)
+            .get_mut(&user_id)
             .ok_or(Error::UserNotSignedUp)?
             .session()
         {
@@ -294,7 +299,7 @@ mod tests {
             &testnet.bootstrap,
         );
 
-        let client = Client::new(Some(*seed), None, Some(&testnet.bootstrap)).unwrap();
+        let client = Client::new(Some(&testnet.bootstrap)).unwrap();
 
         assert_eq!(client.homeservers_cache.len(), 1);
         assert_eq!(
@@ -331,7 +336,7 @@ mod tests {
             &Url::parse(&server.url()).unwrap(),
             &testnet.bootstrap,
         );
-        let mut client = Client::new(Some(*seed), None, Some(&testnet.bootstrap)).unwrap();
+        let mut client = Client::new(Some(&testnet.bootstrap)).unwrap();
 
         let result = client.create(&user_id, repo_name);
 
@@ -374,7 +379,7 @@ mod tests {
             &testnet.bootstrap,
         );
 
-        let mut client = Client::new(Some(*seed), None, Some(&testnet.bootstrap)).unwrap();
+        let mut client = Client::new(Some(&testnet.bootstrap)).unwrap();
 
         let result = client.put(&user_id, repo_name, folder_path, "test_payload");
 
@@ -427,7 +432,7 @@ mod tests {
             &testnet.bootstrap,
         );
 
-        let mut client = Client::new(Some(*seed), None, Some(&testnet.bootstrap)).unwrap();
+        let mut client = Client::new(Some(&testnet.bootstrap)).unwrap();
 
         let result = client.get(&user_id, repo_name, folder_path);
 
@@ -470,7 +475,7 @@ mod tests {
             &testnet.bootstrap,
         );
 
-        let mut client = Client::new(Some(*seed), None, Some(&testnet.bootstrap)).unwrap();
+        let mut client = Client::new(Some(&testnet.bootstrap)).unwrap();
 
         let result = client.delete(&user_id, repo_name, folder_path);
 
