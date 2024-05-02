@@ -32,13 +32,6 @@ impl Auth<'_> {
             Err(e) => return Err(e),
         };
 
-        if self.homeserver_url.is_none() {
-            self.homeserver_url = match self.resolver.resolve_homeserver(&key_pair.public_key()) {
-                Ok(url) => Some(url),
-                Err(e) => return Err(Error::FailedToResolveHomeserver(e)),
-            };
-        }
-
         // Re-publish the homeserver url
         match &self
             .resolver
@@ -133,13 +126,6 @@ impl Auth<'_> {
         let challenge = self.get_challenge(&key_pair.public_key());
         let signature = key_pair.sign(&challenge.unwrap().signable).to_string();
         let user_id = key_pair.to_z32();
-
-        if self.homeserver_url.is_none() {
-            self.homeserver_url = match self.resolver.resolve_homeserver(&key_pair.public_key()) {
-                Ok(url) => Some(url),
-                Err(e) => return Err(Error::FailedToResolveHomeserver(e)),
-            };
-        }
 
         let path = match sig_type {
             SigType::Signup => format!("/mvp/users/{}/pkarr", user_id),
