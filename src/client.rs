@@ -43,11 +43,7 @@ impl Client<'_> {
 
     /* "AUTH" RELATED LOGIC */
     /// signup
-    pub fn signup(
-        &mut self,
-        seed: [u8; 32],
-        homeserver_url: Option<Url>,
-    ) -> Result<String, Error> {
+    pub fn signup(&mut self, seed: [u8; 32], homeserver_url: Option<Url>) -> Result<String, Error> {
         let resolver = Resolver::new(self.bootstrap);
         let mut auth = Auth::new(resolver, homeserver_url);
 
@@ -61,11 +57,7 @@ impl Client<'_> {
     }
 
     /// login
-    pub fn login(
-        &mut self,
-        seed: [u8; 32],
-        homeserver_url: Option<Url>,
-    ) -> Result<String, Error> {
+    pub fn login(&mut self, seed: [u8; 32], homeserver_url: Option<Url>) -> Result<String, Error> {
         let resolver = Resolver::new(self.bootstrap);
         let mut auth = Auth::new(resolver, homeserver_url);
 
@@ -337,9 +329,7 @@ mod tests {
 
         assert_eq!(client.homeservers_cache.len(), 0);
 
-        client
-            .signup(seed, Some(homeserver_url.clone()))
-            .unwrap();
+        client.signup(seed, Some(homeserver_url.clone())).unwrap();
 
         assert_eq!(client.homeservers_cache.len(), 1);
         assert_eq!(
@@ -406,9 +396,7 @@ mod tests {
 
         assert_eq!(client.homeservers_cache.len(), 0);
 
-        client
-            .login(seed, Some(homeserver_url.clone()))
-            .unwrap();
+        client.login(seed, Some(homeserver_url.clone())).unwrap();
 
         assert_eq!(client.homeservers_cache.len(), 1);
         assert_eq!(
@@ -439,9 +427,7 @@ mod tests {
             "data".to_string(),
         );
         let mut client = Client::new(Some(&testnet.bootstrap));
-        let user_id = client
-            .login(seed, Some(homeserver_url.clone()))
-            .unwrap();
+        let user_id = client.login(seed, Some(homeserver_url.clone())).unwrap();
 
         let result = client.create(&user_id, repo_name);
 
@@ -476,9 +462,7 @@ mod tests {
             "test_payload".to_string(),
         );
         let mut client = Client::new(Some(&testnet.bootstrap));
-        let user_id = client
-            .login(seed, Some(homeserver_url.clone()))
-            .unwrap();
+        let user_id = client.login(seed, Some(homeserver_url.clone())).unwrap();
 
         let result = client.put(&user_id, repo_name, folder_path, "test_payload");
 
@@ -524,9 +508,7 @@ mod tests {
             data.to_string(),
         );
         let mut client = Client::new(Some(&testnet.bootstrap));
-        let user_id = client
-            .login(seed, Some(homeserver_url.clone()))
-            .unwrap();
+        let user_id = client.login(seed, Some(homeserver_url.clone())).unwrap();
 
         let result = client.get(&user_id, repo_name, folder_path);
 
@@ -561,9 +543,7 @@ mod tests {
             "data".to_string(),
         );
         let mut client = Client::new(Some(&testnet.bootstrap));
-        let user_id = client
-            .login(seed, Some(homeserver_url.clone()))
-            .unwrap();
+        let user_id = client.login(seed, Some(homeserver_url.clone())).unwrap();
 
         let result = client.delete(&user_id, repo_name, folder_path);
 
