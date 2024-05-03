@@ -1,5 +1,5 @@
 pub mod client;
-mod error;
+pub mod error;
 mod helpers;
 mod transport;
 pub mod utils;
