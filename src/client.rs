@@ -131,12 +131,7 @@ impl Client<'_> {
     /// Create repository for user
     pub fn create(&mut self, user_id: &str, repo_name: &str) -> Result<(), Error> {
         let url = &self
-            .homeservers_cache
-            .get(user_id)
-            .ok_or(Error::UserNotSignedUp)?
-            .homeserver_url
-            .clone()
-            .unwrap()
+            .get_home_server_url(user_id)?
             .join(&Path::get_repo_string(user_id, repo_name, None))
             .unwrap();
 
@@ -165,12 +160,7 @@ impl Client<'_> {
         payload: &str,
     ) -> Result<Url, Error> {
         let url = &self
-            .homeservers_cache
-            .get(user_id)
-            .ok_or(Error::UserNotSignedUp)?
-            .homeserver_url
-            .clone()
-            .unwrap()
+            .get_home_server_url(user_id)?
             .join(&Path::get_repo_string(user_id, repo_name, Some(path)))
             .unwrap();
 
@@ -205,12 +195,7 @@ impl Client<'_> {
     /// Get data from user's repository and return it as a JSON(?)
     pub fn get(&mut self, user_id: &str, repo_name: &str, path: &str) -> Result<String, Error> {
         let url = &self
-            .homeservers_cache
-            .get(user_id)
-            .ok_or(Error::UserNotSignedUp)?
-            .homeserver_url
-            .clone()
-            .unwrap()
+            .get_home_server_url(user_id)?
             .join(&Path::get_repo_string(user_id, repo_name, Some(path)))
             .unwrap();
 
@@ -235,12 +220,7 @@ impl Client<'_> {
     /// Delete data from user's repository
     pub fn delete(&mut self, user_id: &str, repo_name: &str, path: &str) -> Result<(), Error> {
         let url = &self
-            .homeservers_cache
-            .get(user_id)
-            .ok_or(Error::UserNotSignedUp)?
-            .homeserver_url
-            .clone()
-            .unwrap()
+            .get_home_server_url(user_id)?
             .join(&Path::get_repo_string(user_id, repo_name, Some(path)))
             .unwrap();
 
