@@ -37,10 +37,6 @@ impl Client<'_> {
         }
     }
 
-    pub fn generate_seed() -> [u8; 32] {
-        crypto::random_bytes(32).try_into().unwrap()
-    }
-
     /* "AUTH" RELATED LOGIC */
     /// signup
     pub fn signup(&mut self, seed: [u8; 32], homeserver_url: Option<Url>) -> Result<String, Error> {
@@ -252,12 +248,13 @@ mod tests {
     use super::*;
     use crate::test_utils::*;
     use crate::transport::crypto::{DeterministicKeyGen, Keypair};
+    use crate::utils::generate_seed;
     use mainline::dht::Testnet;
 
     #[test]
     fn test_client_new() {
         let testnet = Testnet::new(10);
-        let seed = Client::generate_seed();
+        let seed = generate_seed();
 
         let key_pair: Keypair = DeterministicKeyGen::generate(Some(&seed));
         let user_id = key_pair.to_z32();
@@ -278,7 +275,7 @@ mod tests {
     #[test]
     fn test_client_signup_with_seed() {
         let testnet = Testnet::new(10);
-        let seed = Client::generate_seed();
+        let seed = generate_seed();
 
         let key_pair: Keypair = DeterministicKeyGen::generate(Some(&seed));
         let user_id = key_pair.to_z32();
@@ -314,7 +311,7 @@ mod tests {
     #[test]
     fn test_client_signup_with_seed_url() {
         let testnet = Testnet::new(10);
-        let seed = Client::generate_seed();
+        let seed = generate_seed();
 
         let key_pair: Keypair = DeterministicKeyGen::generate(Some(&seed));
         let user_id = key_pair.to_z32();
@@ -347,7 +344,7 @@ mod tests {
     #[test]
     fn test_client_login_with_seed() {
         let testnet = Testnet::new(10);
-        let seed = Client::generate_seed();
+        let seed = generate_seed();
 
         let key_pair: Keypair = DeterministicKeyGen::generate(Some(&seed));
         let user_id = key_pair.to_z32();
@@ -382,7 +379,7 @@ mod tests {
     #[test]
     fn test_client_login_with_seed_url() {
         let testnet = Testnet::new(10);
-        let seed = Client::generate_seed();
+        let seed = generate_seed();
 
         let key_pair: Keypair = DeterministicKeyGen::generate(Some(&seed));
         let user_id = key_pair.to_z32();
@@ -413,7 +410,7 @@ mod tests {
 
     #[test]
     fn test_client_create() {
-        let seed = Client::generate_seed();
+        let seed = generate_seed();
         let testnet = Testnet::new(10);
 
         let key_pair: Keypair = DeterministicKeyGen::generate(Some(&seed));
@@ -448,7 +445,7 @@ mod tests {
     #[test]
     fn test_client_put() {
         let testnet = Testnet::new(10);
-        let seed = Client::generate_seed();
+        let seed = generate_seed();
 
         let key_pair: Keypair = DeterministicKeyGen::generate(Some(&seed));
         let user_id = key_pair.to_z32();
@@ -493,7 +490,7 @@ mod tests {
     fn test_client_get() {
         let testnet = Testnet::new(10);
 
-        let seed = Client::generate_seed();
+        let seed = generate_seed();
         let key_pair: Keypair = DeterministicKeyGen::generate(Some(&seed));
         let user_id = key_pair.to_z32();
 
@@ -530,7 +527,7 @@ mod tests {
     fn test_client_delete() {
         let testnet = Testnet::new(10);
 
-        let seed = Client::generate_seed();
+        let seed = generate_seed();
         let key_pair: Keypair = DeterministicKeyGen::generate(Some(&seed));
         let user_id = key_pair.to_z32();
         let repo_name = "test_repo";

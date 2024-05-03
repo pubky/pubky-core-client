@@ -19,6 +19,18 @@ pub fn now() -> u64 {
         .as_secs()
 }
 
+/// Generate 32bytes long random seed
+/// # Examples
+/// ```
+/// use pubky_core_client::utils;
+/// let seed_1 = utils::generate_seed();
+/// let seed_2 = utils::generate_seed();
+/// assert_ne!(seed_1, seed_2);
+/// ```
+pub fn generate_seed() -> [u8; 32] {
+    crypto::random_bytes(32).try_into().unwrap()
+}
+
 /// Generate a new ED25519 key pair
 ///
 /// # Examples
