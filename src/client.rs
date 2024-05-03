@@ -178,15 +178,13 @@ impl Client<'_> {
             payload.len().to_string().try_into().unwrap(),
         );
 
-        let response = request(
+        match request(
             Method::PUT,
             url.clone(),
             self.get_mut_session(user_id)?,
             Some(&headers),
             Some(payload.to_string()),
-        );
-
-        match response {
+        ) {
             Ok(_) => Ok(url.clone()),
             Err(e) => Err(Error::FailedToStoreData(e)),
         }
@@ -199,15 +197,13 @@ impl Client<'_> {
             .join(&Path::get_repo_string(user_id, repo_name, Some(path)))
             .unwrap();
 
-        let response = request(
+        match request(
             Method::GET,
             url.clone(),
             self.get_mut_session(user_id)?,
             None,
             None,
-        );
-
-        match response {
+        ) {
             Ok(body) => Ok(body),
             Err(e) => Err(Error::FailedToRetrieveData(e)),
         }
@@ -220,15 +216,13 @@ impl Client<'_> {
             .join(&Path::get_repo_string(user_id, repo_name, Some(path)))
             .unwrap();
 
-        let response = request(
+        match request(
             Method::DELETE,
             url.clone(),
             self.get_mut_session(user_id)?,
             None,
             None,
-        );
-
-        match response {
+        ) {
             Ok(_) => Ok(()),
             Err(e) => Err(Error::FailedToDeleteData(e)),
         }
