@@ -4,8 +4,20 @@ pub use reqwest::header::HeaderMap;
 pub use reqwest::Method;
 pub use reqwest::Url;
 
-// Have a hashmap homeserverUrl -> session_id
-// Q: how to clean it? -> delete manually
+/// Request method helper that sends a request to the given URL with the given method, headers, and body.
+/// It also updates the session_id if a new one is received.
+///
+/// # Arguments
+/// * `method` - The HTTP method to use.
+/// * `path` - The URL to send the request to.
+/// * `session_id` - The session_id to use for the request.
+/// * `headers` - The headers to use for the request.
+/// * `body` - The body to use for the request.
+/// # Returns
+/// * `Result<String, Error>` - The response body if the request was successful, or an error otherwise.
+/// # Errors
+/// * `Error::RequestFailed` - If the request failed.
+/// * `Error::ResponseParseFailed` - If the response could not be parsed.
 pub fn request(
     method: Method,
     path: Url,
@@ -13,7 +25,6 @@ pub fn request(
     headers: Option<&HeaderMap>,
     body: Option<String>,
 ) -> Result<String, Error> {
-    // TODO: consider moving somewhere outside?
     let client = Client::new();
     let mut request_builder = client.request(method, path);
 
