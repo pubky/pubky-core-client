@@ -1,5 +1,7 @@
+#[cfg(any(test, doctest))]
 use crate::error::ChallengeError as Error;
 use crate::transport::crypto;
+#[cfg(any(test, doctest))]
 use crate::utils::now;
 
 #[derive(Debug)]
@@ -20,6 +22,7 @@ impl Challenge {
         }
     }
 
+    #[cfg(any(test, doctest))]
     pub fn create(expires_at: u64, challenge: Option<[u8; 32]>) -> Self {
         // Lazily generate a challenge if none is provided
         let challenge = challenge.unwrap_or_else(|| {
@@ -32,6 +35,7 @@ impl Challenge {
         Self::new(challenge, expires_at, signable)
     }
 
+    #[cfg(any(test, doctest))]
     pub fn serialize(&self) -> Vec<u8> {
         let mut bytes = Vec::with_capacity(40);
         bytes.extend_from_slice(&self.value);
@@ -51,6 +55,7 @@ impl Challenge {
         Self::new(value, expires_at, Self::signable(&value))
     }
 
+    #[cfg(any(test, doctest))]
     pub fn expired(&self) -> bool {
         self.expires_at <= now()
     }
@@ -59,6 +64,7 @@ impl Challenge {
         crypto::blake3::derive_key(CONTEXT, challenge)
     }
 
+    #[cfg(any(test, doctest))]
     pub fn verify(
         &self,
         signature: &crypto::Signature,
