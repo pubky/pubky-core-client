@@ -44,11 +44,10 @@ impl Client<'_> {
         seed: Option<[u8; 32]>,
         homeserver_url: Option<Url>,
     ) -> Result<String, Error> {
-        let seed = seed.unwrap_or(crypto::random_bytes(32).try_into().unwrap());
-
         let resolver = Resolver::new(self.bootstrap);
         let mut auth = Auth::new(resolver, homeserver_url);
 
+        let seed = seed.unwrap_or(crypto::random_bytes(32).try_into().unwrap());
         match auth.signup(&seed) {
             Ok(user_id) => {
                 let _ = &self.homeservers_cache.insert(user_id.clone(), auth);
@@ -64,11 +63,10 @@ impl Client<'_> {
         seed: Option<[u8; 32]>,
         homeserver_url: Option<Url>,
     ) -> Result<String, Error> {
-        let seed = seed.unwrap_or(crypto::random_bytes(32).try_into().unwrap());
-
         let resolver = Resolver::new(self.bootstrap);
         let mut auth = Auth::new(resolver, homeserver_url);
 
+        let seed = seed.unwrap_or(crypto::random_bytes(32).try_into().unwrap());
         match auth.login(&seed) {
             Ok(user_id) => {
                 let _ = &self.homeservers_cache.insert(user_id.clone(), auth);
@@ -86,7 +84,10 @@ impl Client<'_> {
             .ok_or(Error::UserNotSignedUp)?
             .logout(&user_id)
         {
-            Ok(session_id) => Ok(session_id),
+            Ok(session_id) => {
+                let _ = self.homeservers_cache.remove(&user_id);
+                Ok(session_id)
+            },
             Err(e) => Err(Error::FailedToLogout(e)),
         }
     }
