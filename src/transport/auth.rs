@@ -198,15 +198,14 @@ mod test {
         let key_pair: Keypair = DeterministicKeyGen::generate(Some(seed));
         let user_id = key_pair.to_z32();
 
-        let (server, homeserver_url) = create_homeserver_mock(
+        let (mut server, homeserver_url) = create_homeserver_mock(
             user_id.to_string(),
             "repo_name".to_string(),
             "folder_path".to_string(),
             "data".to_string(),
         );
 
-        let url = Url::parse(&server.url()).unwrap();
-        let resolver = publish_url(&key_pair, &url, &testnet.bootstrap);
+        let resolver = publish_url(&key_pair, &homeserver_url, &testnet.bootstrap);
 
         let mut auth = Auth::new(resolver, None);
 
@@ -216,7 +215,7 @@ mod test {
         assert_eq!(user_id, user_id);
         assert_eq!(
             auth.homeserver_url,
-            Some(Url::parse(&server.url()).unwrap())
+            Some(homeserver_url.clone())
         );
         assert_eq!(auth.session_id, Some(session_id));
 
@@ -234,7 +233,7 @@ mod test {
         assert_eq!(got_user_id, user_id);
         assert_eq!(
             auth.homeserver_url,
-            Some(Url::parse(&server.url()).unwrap())
+            Some(homeserver_url.clone())
         );
         assert_eq!(auth.session_id, Some(session_id));
 
@@ -249,7 +248,7 @@ mod test {
         assert_eq!(user_id, res_user_id);
         assert_eq!(
             auth.homeserver_url,
-            Some(Url::parse(&server.url()).unwrap())
+            Some(homeserver_url.clone())
         );
         assert_eq!(auth.session_id, Some(session_id));
 
@@ -260,7 +259,9 @@ mod test {
         assert_eq!(auth.session_id, Some(session_id));
         assert_eq!(
             auth.homeserver_url,
-            Some(Url::parse(&server.url()).unwrap())
+            Some(homeserver_url.clone())
         );
+
+        server.reset();
     }
 }
