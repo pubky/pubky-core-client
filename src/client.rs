@@ -87,7 +87,7 @@ impl Client<'_> {
             Ok(session_id) => {
                 let _ = self.homeservers_cache.remove(&user_id);
                 Ok(session_id)
-            },
+            }
             Err(e) => Err(Error::FailedToLogout(e)),
         }
     }
