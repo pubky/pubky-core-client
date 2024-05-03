@@ -213,10 +213,7 @@ mod test {
         let user_id = auth.signup(seed).unwrap();
         let session_id = "send_signature_signup".to_string();
         assert_eq!(user_id, user_id);
-        assert_eq!(
-            auth.homeserver_url,
-            Some(homeserver_url.clone())
-        );
+        assert_eq!(auth.homeserver_url, Some(homeserver_url.clone()));
         assert_eq!(auth.session_id, Some(session_id));
 
         // TEST LOGOUT
@@ -226,15 +223,12 @@ mod test {
 
         // TEST SIGNUP AGAIN
         let resolver = Resolver::new(Some(&testnet.bootstrap));
-        let mut auth = Auth::new(resolver, Some(Url::parse(&server.url()).unwrap()));
+        let mut auth = Auth::new(resolver, Some(homeserver_url.clone()));
 
         let got_user_id = auth.signup(seed).unwrap();
         let session_id = "send_signature_signup".to_string();
         assert_eq!(got_user_id, user_id);
-        assert_eq!(
-            auth.homeserver_url,
-            Some(homeserver_url.clone())
-        );
+        assert_eq!(auth.homeserver_url, Some(homeserver_url.clone()));
         assert_eq!(auth.session_id, Some(session_id));
 
         // TEST LOGOUT
@@ -246,10 +240,7 @@ mod test {
         let res_user_id = auth.login(seed).unwrap();
         let session_id = "send_signature_login".to_string();
         assert_eq!(user_id, res_user_id);
-        assert_eq!(
-            auth.homeserver_url,
-            Some(homeserver_url.clone())
-        );
+        assert_eq!(auth.homeserver_url, Some(homeserver_url.clone()));
         assert_eq!(auth.session_id, Some(session_id));
 
         // TEST SESSION
@@ -257,10 +248,7 @@ mod test {
         let session_id = "get_session".to_string();
         assert_eq!(session, "session".to_string());
         assert_eq!(auth.session_id, Some(session_id));
-        assert_eq!(
-            auth.homeserver_url,
-            Some(homeserver_url.clone())
-        );
+        assert_eq!(auth.homeserver_url, Some(homeserver_url.clone()));
 
         server.reset();
     }

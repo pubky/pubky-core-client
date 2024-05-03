@@ -284,11 +284,7 @@ mod tests {
             "folder_path".to_string(),
             "data".to_string(),
         );
-        let _ = publish_url(
-            &key_pair,
-            &homeserver_url,
-            &testnet.bootstrap,
-        );
+        let _ = publish_url(&key_pair, &homeserver_url, &testnet.bootstrap);
 
         let client = Client::new(Some(&testnet.bootstrap));
 
@@ -310,11 +306,7 @@ mod tests {
             "folder_path".to_string(),
             "data".to_string(),
         );
-        let _ = publish_url(
-            &key_pair,
-            &homeserver_url,
-            &testnet.bootstrap,
-        );
+        let _ = publish_url(&key_pair, &homeserver_url, &testnet.bootstrap);
 
         let mut client = Client::new(Some(&testnet.bootstrap));
 
@@ -352,11 +344,7 @@ mod tests {
             "folder_path".to_string(),
             "data".to_string(),
         );
-        let _ = publish_url(
-            &key_pair,
-            &homeserver_url,
-            &testnet.bootstrap,
-        );
+        let _ = publish_url(&key_pair, &homeserver_url, &testnet.bootstrap);
 
         let mut client = Client::new(Some(&testnet.bootstrap));
 
@@ -396,11 +384,7 @@ mod tests {
             "folder_path".to_string(),
             "data".to_string(),
         );
-        let _ = publish_url(
-            &key_pair,
-            &homeserver_url,
-            &testnet.bootstrap,
-        );
+        let _ = publish_url(&key_pair, &homeserver_url, &testnet.bootstrap);
 
         let mut client = Client::new(Some(&testnet.bootstrap));
 
@@ -437,11 +421,7 @@ mod tests {
             "folder_path".to_string(),
             "data".to_string(),
         );
-        let _ = publish_url(
-            &key_pair,
-            &homeserver_url,
-            &testnet.bootstrap,
-        );
+        let _ = publish_url(&key_pair, &homeserver_url, &testnet.bootstrap);
 
         let mut client = Client::new(Some(&testnet.bootstrap));
 
@@ -483,11 +463,7 @@ mod tests {
             "folder_path".to_string(),
             "data".to_string(),
         );
-        let _ = publish_url(
-            &key_pair,
-            &homeserver_url,
-            &testnet.bootstrap,
-        );
+        let _ = publish_url(&key_pair, &homeserver_url, &testnet.bootstrap);
         let mut client = Client::new(Some(&testnet.bootstrap));
         let user_id = client.login(Some(*seed), None).unwrap();
 
@@ -528,11 +504,7 @@ mod tests {
             "test_payload".to_string(),
         );
 
-        let _ = publish_url(
-            &key_pair,
-            &homeserver_url,
-            &testnet.bootstrap,
-        );
+        let _ = publish_url(&key_pair, &homeserver_url, &testnet.bootstrap);
 
         let mut client = Client::new(Some(&testnet.bootstrap));
         let user_id = client.login(Some(*seed), None).unwrap();
@@ -541,8 +513,7 @@ mod tests {
 
         assert_eq!(
             result.unwrap(),
-            Url::parse(&server.url())
-                .unwrap()
+            homeserver_url
                 .join(&Path::get_repo_string(
                     &user_id,
                     repo_name,
@@ -586,11 +557,7 @@ mod tests {
             data.to_string(),
         );
 
-        let _ = publish_url(
-            &key_pair,
-            &homeserver_url,
-            &testnet.bootstrap,
-        );
+        let _ = publish_url(&key_pair, &homeserver_url, &testnet.bootstrap);
 
         let mut client = Client::new(Some(&testnet.bootstrap));
         let user_id = client.login(Some(*seed), None).unwrap();
@@ -605,7 +572,7 @@ mod tests {
                 .get(&user_id)
                 .unwrap()
                 .homeserver_url,
-            Some(Url::parse(&server.url()).unwrap())
+            Some(homeserver_url)
         );
         assert_eq!(
             client.homeservers_cache.get(&user_id).unwrap().session_id,
@@ -632,11 +599,7 @@ mod tests {
             "data".to_string(),
         );
 
-        let _ = publish_url(
-            &key_pair,
-            &homeserver_url,
-            &testnet.bootstrap,
-        );
+        let _ = publish_url(&key_pair, &homeserver_url, &testnet.bootstrap);
 
         let mut client = Client::new(Some(&testnet.bootstrap));
         let user_id = client.login(Some(*seed), None).unwrap();
