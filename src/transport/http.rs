@@ -64,7 +64,7 @@ mod tests {
         let mut session_id = None;
         let headers = HeaderMap::new();
         let body = None;
-        let path = Url::parse(&format!("{}/test", server.url())).unwrap();
+        let path = Url::parse(&server.url()).unwrap().join("/test").unwrap();
 
         let res = request(Method::GET, path, &mut session_id, Some(&headers), body);
 
