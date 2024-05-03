@@ -104,6 +104,28 @@ impl Client<'_> {
         }
     }
 
+    /// gets homeserver url
+    pub fn get_home_server_url(&self, user_id: &str) -> Result<Url, Error> {
+        Ok(self
+            .homeservers_cache
+            .get(user_id)
+            .ok_or(Error::UserNotSignedUp)?
+            .homeserver_url
+            .clone()
+            .unwrap())
+    }
+
+    /// gets current session
+    pub fn get_current_session(&self, user_id: &str) -> Result<String, Error> {
+        Ok(self
+            .homeservers_cache
+            .get(user_id)
+            .ok_or(Error::UserNotSignedUp)?
+            .session_id
+            .clone()
+            .unwrap())
+    }
+
     /* "REPOS" RELATED LOGIC */
 
     /// Create repository for user
@@ -316,16 +338,12 @@ mod tests {
 
         assert_eq!(client.homeservers_cache.len(), 1);
         assert_eq!(
-            client
-                .homeservers_cache
-                .get(&user_id)
-                .unwrap()
-                .homeserver_url,
-            Some(homeserver_url)
+            client.get_home_server_url(&user_id).unwrap(),
+            homeserver_url
         );
         assert_eq!(
-            client.homeservers_cache.get(&user_id).unwrap().session_id,
-            Some("send_signature_signup".to_string())
+            client.get_current_session(&user_id).unwrap(),
+            "send_signature_signup".to_string()
         );
 
         server.reset();
@@ -356,16 +374,12 @@ mod tests {
 
         assert_eq!(client.homeservers_cache.len(), 1);
         assert_eq!(
-            client
-                .homeservers_cache
-                .get(&user_id)
-                .unwrap()
-                .homeserver_url,
-            Some(homeserver_url)
+            client.get_home_server_url(&user_id).unwrap(),
+            homeserver_url
         );
         assert_eq!(
-            client.homeservers_cache.get(&user_id).unwrap().session_id,
-            Some("send_signature_signup".to_string())
+            client.get_current_session(&user_id).unwrap(),
+            "send_signature_signup".to_string()
         );
 
         server.reset();
@@ -393,16 +407,12 @@ mod tests {
         client.login(Some(*seed), None).unwrap();
 
         assert_eq!(
-            client
-                .homeservers_cache
-                .get(&user_id)
-                .unwrap()
-                .homeserver_url,
-            Some(homeserver_url)
+            client.get_home_server_url(&user_id).unwrap(),
+            homeserver_url
         );
         assert_eq!(
-            client.homeservers_cache.get(&user_id).unwrap().session_id,
-            Some("send_signature_login".to_string())
+            client.get_current_session(&user_id).unwrap(),
+            "send_signature_login".to_string()
         );
 
         server.reset();
@@ -433,16 +443,12 @@ mod tests {
 
         assert_eq!(client.homeservers_cache.len(), 1);
         assert_eq!(
-            client
-                .homeservers_cache
-                .get(&user_id)
-                .unwrap()
-                .homeserver_url,
-            Some(homeserver_url)
+            client.get_home_server_url(&user_id).unwrap(),
+            homeserver_url
         );
         assert_eq!(
-            client.homeservers_cache.get(&user_id).unwrap().session_id,
-            Some("send_signature_login".to_string())
+            client.get_current_session(&user_id).unwrap(),
+            "send_signature_login".to_string()
         );
 
         server.reset();
@@ -472,16 +478,12 @@ mod tests {
         assert!(result.is_ok());
         assert_eq!(client.homeservers_cache.len(), 1);
         assert_eq!(
-            client
-                .homeservers_cache
-                .get(&user_id)
-                .unwrap()
-                .homeserver_url,
-            Some(homeserver_url)
+            client.get_home_server_url(&user_id).unwrap(),
+            homeserver_url
         );
         assert_eq!(
-            client.homeservers_cache.get(&user_id).unwrap().session_id,
-            Some("create_repo".to_string())
+            client.get_current_session(&user_id).unwrap(),
+            "create_repo".to_string()
         );
 
         server.reset();
@@ -523,16 +525,12 @@ mod tests {
         );
         assert_eq!(client.homeservers_cache.len(), 1);
         assert_eq!(
-            client
-                .homeservers_cache
-                .get(&user_id)
-                .unwrap()
-                .homeserver_url,
-            Some(homeserver_url)
+            client.get_home_server_url(&user_id).unwrap(),
+            homeserver_url
         );
         assert_eq!(
-            client.homeservers_cache.get(&user_id).unwrap().session_id,
-            Some("create_folder".to_string())
+            client.get_current_session(&user_id).unwrap(),
+            "create_folder".to_string()
         );
 
         server.reset();
@@ -567,16 +565,12 @@ mod tests {
         assert_eq!(result.unwrap(), data.to_string());
         assert_eq!(client.homeservers_cache.len(), 1);
         assert_eq!(
-            client
-                .homeservers_cache
-                .get(&user_id)
-                .unwrap()
-                .homeserver_url,
-            Some(homeserver_url)
+            client.get_home_server_url(&user_id).unwrap(),
+            homeserver_url
         );
         assert_eq!(
-            client.homeservers_cache.get(&user_id).unwrap().session_id,
-            Some("get_data".to_string())
+            client.get_current_session(&user_id).unwrap(),
+            "get_data".to_string()
         );
 
         server.reset();
@@ -609,16 +603,12 @@ mod tests {
         assert!(result.is_ok());
         assert_eq!(client.homeservers_cache.len(), 1);
         assert_eq!(
-            client
-                .homeservers_cache
-                .get(&user_id)
-                .unwrap()
-                .homeserver_url,
-            Some(homeserver_url)
+            client.get_home_server_url(&user_id).unwrap(),
+            homeserver_url
         );
         assert_eq!(
-            client.homeservers_cache.get(&user_id).unwrap().session_id,
-            Some("delete_data".to_string())
+            client.get_current_session(&user_id).unwrap(),
+            "delete_data".to_string()
         );
 
         server.reset();
