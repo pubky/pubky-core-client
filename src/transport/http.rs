@@ -59,12 +59,12 @@ mod tests {
             body: &b"test".to_vec(),
             headers: vec![("Set-Cookie", "sessionId=123")],
         };
-        let server = test_utils::create_server(vec![dummy_test_mock_params]);
+        let (server, url) = test_utils::create_server(vec![dummy_test_mock_params]);
 
         let mut session_id = None;
         let headers = HeaderMap::new();
         let body = None;
-        let path = Url::parse(&server.url()).unwrap().join("/test").unwrap();
+        let path = url.join("/test").unwrap();
 
         let res = request(Method::GET, path, &mut session_id, Some(&headers), body);
 

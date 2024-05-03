@@ -198,7 +198,7 @@ mod test {
         let key_pair: Keypair = DeterministicKeyGen::generate(Some(seed));
         let user_id = key_pair.to_z32();
 
-        let server = create_homeserver_mock(
+        let (server, homeserver_url) = create_homeserver_mock(
             user_id.to_string(),
             "repo_name".to_string(),
             "folder_path".to_string(),
