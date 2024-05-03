@@ -13,14 +13,9 @@ use crate::transport::{
 /// This is the pubky client class. It is used for accessing pubky infrastructure for CRUD options
 /// over user's data in pubky network.
 ///
-/// Client accepts optional seed for pubky key generation.
-/// It accepts optional homeserver URL.
+/// Client accepts optional list of bootstraping DHT nodes to resolve user's homeserver url.
 ///
-/// It has as a cache which matches {userId:(homeserver_url, sesison_id)}.
-///
-/// It has encapsulates an instance of a resolver to publish user's identity to the network, as
-/// well as to lookup other user's homeservers
-///
+/// It has encapsulates an instance of Auth object to publish user's identity to the network, to lookup other user's homeservers which acts as a cache that matches `userId` to `homeserver_url` and corresponding `sesison_id`.
 ///
 /// The CRUD operations for homeserver are performed using http requests.
 
@@ -247,8 +242,7 @@ impl Client<'_> {
 mod tests {
     use super::*;
     use crate::test_utils::*;
-    use crate::transport::crypto::{DeterministicKeyGen, Keypair};
-    use crate::utils::generate_seed;
+    use crate::utils::{generate_keypair, generate_seed, get_user_id};
     use mainline::dht::Testnet;
 
     #[test]
@@ -256,8 +250,7 @@ mod tests {
         let testnet = Testnet::new(10);
         let seed = generate_seed();
 
-        let key_pair: Keypair = DeterministicKeyGen::generate(Some(&seed));
-        let user_id = key_pair.to_z32();
+        let user_id = get_user_id(Some(&seed));
         let (mut server, _homeserver_url) = create_homeserver_mock(
             user_id.to_string(),
             "repo_name".to_string(),
@@ -277,8 +270,8 @@ mod tests {
         let testnet = Testnet::new(10);
         let seed = generate_seed();
 
-        let key_pair: Keypair = DeterministicKeyGen::generate(Some(&seed));
-        let user_id = key_pair.to_z32();
+        let key_pair = generate_keypair(Some(&seed));
+        let user_id = get_user_id(Some(&seed));
         let (mut server, homeserver_url) = create_homeserver_mock(
             user_id.to_string(),
             "repo_name".to_string(),
@@ -313,8 +306,7 @@ mod tests {
         let testnet = Testnet::new(10);
         let seed = generate_seed();
 
-        let key_pair: Keypair = DeterministicKeyGen::generate(Some(&seed));
-        let user_id = key_pair.to_z32();
+        let user_id = get_user_id(Some(&seed));
         let (mut server, homeserver_url) = create_homeserver_mock(
             user_id.to_string(),
             "repo_name".to_string(),
@@ -346,8 +338,8 @@ mod tests {
         let testnet = Testnet::new(10);
         let seed = generate_seed();
 
-        let key_pair: Keypair = DeterministicKeyGen::generate(Some(&seed));
-        let user_id = key_pair.to_z32();
+        let key_pair = generate_keypair(Some(&seed));
+        let user_id = get_user_id(Some(&seed));
         let (mut server, homeserver_url) = create_homeserver_mock(
             user_id.to_string(),
             "repo_name".to_string(),
@@ -381,8 +373,7 @@ mod tests {
         let testnet = Testnet::new(10);
         let seed = generate_seed();
 
-        let key_pair: Keypair = DeterministicKeyGen::generate(Some(&seed));
-        let user_id = key_pair.to_z32();
+        let user_id = get_user_id(Some(&seed));
         let (mut server, homeserver_url) = create_homeserver_mock(
             user_id.to_string(),
             "repo_name".to_string(),
@@ -413,8 +404,7 @@ mod tests {
         let seed = generate_seed();
         let testnet = Testnet::new(10);
 
-        let key_pair: Keypair = DeterministicKeyGen::generate(Some(&seed));
-        let user_id = key_pair.to_z32();
+        let user_id = get_user_id(Some(&seed));
         let repo_name = "test_repo";
 
         let (mut server, homeserver_url) = create_homeserver_mock(
@@ -447,8 +437,7 @@ mod tests {
         let testnet = Testnet::new(10);
         let seed = generate_seed();
 
-        let key_pair: Keypair = DeterministicKeyGen::generate(Some(&seed));
-        let user_id = key_pair.to_z32();
+        let user_id = get_user_id(Some(&seed));
 
         let repo_name = "test_repo";
         let folder_path = "test_path";
@@ -491,8 +480,7 @@ mod tests {
         let testnet = Testnet::new(10);
 
         let seed = generate_seed();
-        let key_pair: Keypair = DeterministicKeyGen::generate(Some(&seed));
-        let user_id = key_pair.to_z32();
+        let user_id = get_user_id(Some(&seed));
 
         let repo_name = "test_repo";
         let folder_path = "test_path";
@@ -528,8 +516,7 @@ mod tests {
         let testnet = Testnet::new(10);
 
         let seed = generate_seed();
-        let key_pair: Keypair = DeterministicKeyGen::generate(Some(&seed));
-        let user_id = key_pair.to_z32();
+        let user_id = get_user_id(Some(&seed));
         let repo_name = "test_repo";
         let folder_path = "test_path";
 
