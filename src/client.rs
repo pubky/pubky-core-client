@@ -5,7 +5,6 @@ use std::collections::HashMap;
 use crate::helpers::Path;
 use crate::transport::{
     auth::Auth,
-    crypto,
     http::{request, HeaderMap, Method, Url},
     resolver::Resolver,
 };
@@ -25,6 +24,23 @@ pub struct Client<'a> {
 }
 
 impl Client<'_> {
+    /// Create a new instance of Client
+    ///
+    /// # Example
+    /// ```
+    /// # #[cfg(doctest)]
+    /// # {
+    /// # use pubky_core_client::test_utils::*;
+    /// use pubky_core_client::client::Client;
+    /// # use mainline::dht::Testnet;
+    ///
+    /// let bootstrap = None;
+    /// # let testnet = Testnet::new(10);
+    /// # let bootstrap = Some(&testnet.bootstrap);
+    ///
+    /// let client = Client::new(bootstrap);
+    /// # }
+    /// ```
     pub fn new<'a>(bootstrap: Option<&'a Vec<String>>) -> Client<'a> {
         Client {
             homeservers_cache: HashMap::new(),
@@ -33,7 +49,30 @@ impl Client<'_> {
     }
 
     /* "AUTH" RELATED LOGIC */
-    /// signup
+
+    /// Signup to the homeserver using seed either with or without homeserver url. In case if homeserver url is not provided it will be resolved from the seed's public key. URL will be republished to DHT using [Pkarr](https://github.com/Nuhvi/pkarr/)
+    ///
+    /// # Example
+    /// ```
+    /// # #[cfg(doctest)]
+    /// # {
+    /// # use pubky_core_client::test_utils::*;
+    /// use pubky_core_client::utils::{generate_seed, get_user_id};
+    /// seed = generate_seed();
+    ///
+    /// // URL is not provided, thus will be resolved from the client's DHT using seed's public key
+    /// let homeserver_url = None;
+    /// let user_id = clinet.signup(seed, homeserver_url);
+    ///
+    /// assert_eq!(user_id, get_user_id(Some(&seed)));
+    ///
+    /// // URL is provided, thus will be called directly
+    /// let homeserver_url = Some(Url::parse("http://localhost:8080").unwrap());
+    /// let user_id = clinet.signup(seed, homeserver_url);
+    ///
+    /// assert_eq!(user_id, get_user_id(Some(&seed)));
+    /// # }
+    /// ```
     pub fn signup(&mut self, seed: [u8; 32], homeserver_url: Option<Url>) -> Result<String, Error> {
         let resolver = Resolver::new(self.bootstrap);
         let mut auth = Auth::new(resolver, homeserver_url);
@@ -286,8 +325,9 @@ mod tests {
 
         assert_eq!(client.homeservers_cache.len(), 0);
 
-        client.signup(seed, None).unwrap();
+        let got_user_id = client.signup(seed, None).unwrap();
 
+        assert_eq!(got_user_id, user_id);
         assert_eq!(client.homeservers_cache.len(), 1);
         assert_eq!(
             client.get_home_server_url(&user_id).unwrap(),
