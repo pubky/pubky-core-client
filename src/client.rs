@@ -37,17 +37,20 @@ impl Client<'_> {
         }
     }
 
+    pub fn generate_seed() -> [u8; 32] {
+        crypto::random_bytes(32).try_into().unwrap()
+    }
+
     /* "AUTH" RELATED LOGIC */
     /// signup
     pub fn signup(
         &mut self,
-        seed: Option<[u8; 32]>,
+        seed: [u8; 32],
         homeserver_url: Option<Url>,
     ) -> Result<String, Error> {
         let resolver = Resolver::new(self.bootstrap);
         let mut auth = Auth::new(resolver, homeserver_url);
 
-        let seed = seed.unwrap_or(crypto::random_bytes(32).try_into().unwrap());
         match auth.signup(&seed) {
             Ok(user_id) => {
                 let _ = &self.homeservers_cache.insert(user_id.clone(), auth);
@@ -60,13 +63,12 @@ impl Client<'_> {
     /// login
     pub fn login(
         &mut self,
-        seed: Option<[u8; 32]>,
+        seed: [u8; 32],
         homeserver_url: Option<Url>,
     ) -> Result<String, Error> {
         let resolver = Resolver::new(self.bootstrap);
         let mut auth = Auth::new(resolver, homeserver_url);
 
-        let seed = seed.unwrap_or(crypto::random_bytes(32).try_into().unwrap());
         match auth.login(&seed) {
             Ok(user_id) => {
                 let _ = &self.homeservers_cache.insert(user_id.clone(), auth);
@@ -263,17 +265,16 @@ mod tests {
     #[test]
     fn test_client_new() {
         let testnet = Testnet::new(10);
-        let seed = b"it is a seed for key generation!";
+        let seed = Client::generate_seed();
 
-        let key_pair: Keypair = DeterministicKeyGen::generate(Some(seed));
+        let key_pair: Keypair = DeterministicKeyGen::generate(Some(&seed));
         let user_id = key_pair.to_z32();
-        let (mut server, homeserver_url) = create_homeserver_mock(
+        let (mut server, _homeserver_url) = create_homeserver_mock(
             user_id.to_string(),
             "repo_name".to_string(),
             "folder_path".to_string(),
             "data".to_string(),
         );
-        let _ = publish_url(&key_pair, &homeserver_url, &testnet.bootstrap);
 
         let client = Client::new(Some(&testnet.bootstrap));
 
@@ -285,9 +286,9 @@ mod tests {
     #[test]
     fn test_client_signup_with_seed() {
         let testnet = Testnet::new(10);
-        let seed = b"it is a seed for key generation!";
+        let seed = Client::generate_seed();
 
-        let key_pair: Keypair = DeterministicKeyGen::generate(Some(seed));
+        let key_pair: Keypair = DeterministicKeyGen::generate(Some(&seed));
         let user_id = key_pair.to_z32();
         let (mut server, homeserver_url) = create_homeserver_mock(
             user_id.to_string(),
@@ -295,13 +296,15 @@ mod tests {
             "folder_path".to_string(),
             "data".to_string(),
         );
+        // since homeserver_url is not to be provided it will be resolved from the the seed
+        // thus needs to be published beforehand
         let _ = publish_url(&key_pair, &homeserver_url, &testnet.bootstrap);
 
         let mut client = Client::new(Some(&testnet.bootstrap));
 
         assert_eq!(client.homeservers_cache.len(), 0);
 
-        client.signup(Some(*seed), None).unwrap();
+        client.signup(seed, None).unwrap();
 
         assert_eq!(client.homeservers_cache.len(), 1);
         assert_eq!(
@@ -319,9 +322,9 @@ mod tests {
     #[test]
     fn test_client_signup_with_seed_url() {
         let testnet = Testnet::new(10);
-        let seed = b"it is a seed for key generation!";
+        let seed = Client::generate_seed();
 
-        let key_pair: Keypair = DeterministicKeyGen::generate(Some(seed));
+        let key_pair: Keypair = DeterministicKeyGen::generate(Some(&seed));
         let user_id = key_pair.to_z32();
         let (mut server, homeserver_url) = create_homeserver_mock(
             user_id.to_string(),
@@ -329,14 +332,13 @@ mod tests {
             "folder_path".to_string(),
             "data".to_string(),
         );
-        let _ = publish_url(&key_pair, &homeserver_url, &testnet.bootstrap);
 
         let mut client = Client::new(Some(&testnet.bootstrap));
 
         assert_eq!(client.homeservers_cache.len(), 0);
 
         client
-            .signup(Some(*seed), Some(homeserver_url.clone()))
+            .signup(seed, Some(homeserver_url.clone()))
             .unwrap();
 
         assert_eq!(client.homeservers_cache.len(), 1);
@@ -355,9 +357,9 @@ mod tests {
     #[test]
     fn test_client_login_with_seed() {
         let testnet = Testnet::new(10);
-        let seed = b"it is a seed for key generation!";
+        let seed = Client::generate_seed();
 
-        let key_pair: Keypair = DeterministicKeyGen::generate(Some(seed));
+        let key_pair: Keypair = DeterministicKeyGen::generate(Some(&seed));
         let user_id = key_pair.to_z32();
         let (mut server, homeserver_url) = create_homeserver_mock(
             user_id.to_string(),
@@ -365,13 +367,15 @@ mod tests {
             "folder_path".to_string(),
             "data".to_string(),
         );
+        // since homeserver_url is not to be provided it will be resolved from the the seed
+        // thus needs to be published beforehand
         let _ = publish_url(&key_pair, &homeserver_url, &testnet.bootstrap);
 
         let mut client = Client::new(Some(&testnet.bootstrap));
 
         assert_eq!(client.homeservers_cache.len(), 0);
 
-        client.login(Some(*seed), None).unwrap();
+        client.login(seed, None).unwrap();
 
         assert_eq!(
             client.get_home_server_url(&user_id).unwrap(),
@@ -388,9 +392,9 @@ mod tests {
     #[test]
     fn test_client_login_with_seed_url() {
         let testnet = Testnet::new(10);
-        let seed = b"it is a seed for key generation!";
+        let seed = Client::generate_seed();
 
-        let key_pair: Keypair = DeterministicKeyGen::generate(Some(seed));
+        let key_pair: Keypair = DeterministicKeyGen::generate(Some(&seed));
         let user_id = key_pair.to_z32();
         let (mut server, homeserver_url) = create_homeserver_mock(
             user_id.to_string(),
@@ -398,14 +402,12 @@ mod tests {
             "folder_path".to_string(),
             "data".to_string(),
         );
-        let _ = publish_url(&key_pair, &homeserver_url, &testnet.bootstrap);
-
         let mut client = Client::new(Some(&testnet.bootstrap));
 
         assert_eq!(client.homeservers_cache.len(), 0);
 
         client
-            .login(Some(*seed), Some(homeserver_url.clone()))
+            .login(seed, Some(homeserver_url.clone()))
             .unwrap();
 
         assert_eq!(client.homeservers_cache.len(), 1);
@@ -423,10 +425,10 @@ mod tests {
 
     #[test]
     fn test_client_create() {
-        let seed = b"it is a seed for key generation!";
+        let seed = Client::generate_seed();
         let testnet = Testnet::new(10);
 
-        let key_pair: Keypair = DeterministicKeyGen::generate(Some(seed));
+        let key_pair: Keypair = DeterministicKeyGen::generate(Some(&seed));
         let user_id = key_pair.to_z32();
         let repo_name = "test_repo";
 
@@ -436,9 +438,10 @@ mod tests {
             "folder_path".to_string(),
             "data".to_string(),
         );
-        let _ = publish_url(&key_pair, &homeserver_url, &testnet.bootstrap);
         let mut client = Client::new(Some(&testnet.bootstrap));
-        let user_id = client.login(Some(*seed), None).unwrap();
+        let user_id = client
+            .login(seed, Some(homeserver_url.clone()))
+            .unwrap();
 
         let result = client.create(&user_id, repo_name);
 
@@ -459,9 +462,9 @@ mod tests {
     #[test]
     fn test_client_put() {
         let testnet = Testnet::new(10);
-        let seed = b"it is a seed for key generation!";
+        let seed = Client::generate_seed();
 
-        let key_pair: Keypair = DeterministicKeyGen::generate(Some(seed));
+        let key_pair: Keypair = DeterministicKeyGen::generate(Some(&seed));
         let user_id = key_pair.to_z32();
 
         let repo_name = "test_repo";
@@ -472,11 +475,10 @@ mod tests {
             folder_path.to_string(),
             "test_payload".to_string(),
         );
-
-        let _ = publish_url(&key_pair, &homeserver_url, &testnet.bootstrap);
-
         let mut client = Client::new(Some(&testnet.bootstrap));
-        let user_id = client.login(Some(*seed), None).unwrap();
+        let user_id = client
+            .login(seed, Some(homeserver_url.clone()))
+            .unwrap();
 
         let result = client.put(&user_id, repo_name, folder_path, "test_payload");
 
@@ -507,8 +509,8 @@ mod tests {
     fn test_client_get() {
         let testnet = Testnet::new(10);
 
-        let seed = b"it is a seed for key generation!";
-        let key_pair: Keypair = DeterministicKeyGen::generate(Some(seed));
+        let seed = Client::generate_seed();
+        let key_pair: Keypair = DeterministicKeyGen::generate(Some(&seed));
         let user_id = key_pair.to_z32();
 
         let repo_name = "test_repo";
@@ -521,11 +523,10 @@ mod tests {
             folder_path.to_string(),
             data.to_string(),
         );
-
-        let _ = publish_url(&key_pair, &homeserver_url, &testnet.bootstrap);
-
         let mut client = Client::new(Some(&testnet.bootstrap));
-        let user_id = client.login(Some(*seed), None).unwrap();
+        let user_id = client
+            .login(seed, Some(homeserver_url.clone()))
+            .unwrap();
 
         let result = client.get(&user_id, repo_name, folder_path);
 
@@ -547,8 +548,8 @@ mod tests {
     fn test_client_delete() {
         let testnet = Testnet::new(10);
 
-        let seed = b"it is a seed for key generation!";
-        let key_pair: Keypair = DeterministicKeyGen::generate(Some(seed));
+        let seed = Client::generate_seed();
+        let key_pair: Keypair = DeterministicKeyGen::generate(Some(&seed));
         let user_id = key_pair.to_z32();
         let repo_name = "test_repo";
         let folder_path = "test_path";
@@ -559,11 +560,10 @@ mod tests {
             folder_path.to_string(),
             "data".to_string(),
         );
-
-        let _ = publish_url(&key_pair, &homeserver_url, &testnet.bootstrap);
-
         let mut client = Client::new(Some(&testnet.bootstrap));
-        let user_id = client.login(Some(*seed), None).unwrap();
+        let user_id = client
+            .login(seed, Some(homeserver_url.clone()))
+            .unwrap();
 
         let result = client.delete(&user_id, repo_name, folder_path);
 
