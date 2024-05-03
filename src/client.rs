@@ -28,7 +28,7 @@ impl Client<'_> {
     ///
     /// # Example
     /// ```
-    /// #[cfg(doctest)]
+    /// # #[cfg(doctest)]
     /// # use pubky_core_client::test_utils::*;
     /// # use mainline::dht::Testnet;
     /// use pubky_core_client::client::Client;
@@ -54,15 +54,14 @@ impl Client<'_> {
     /// ```
     /// # #[cfg(doctest)]
     /// # use pubky_core_client::test_utils::*;
-    ///
+    /// #
     /// # use mainline::dht::Testnet;
     /// # use pubky_core_client::client::Client;
-    ///
+    /// #
     /// # let testnet = Testnet::new(10);
     /// # let bootstrap = Some(&testnet.bootstrap);
-    ///
     /// # let mut client = Client::new(bootstrap);
-    ///
+    /// #
     /// use url::Url;
     /// use pubky_core_client::utils::{generate_seed, get_user_id};
     /// let seed = generate_seed();
