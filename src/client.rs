@@ -126,6 +126,14 @@ impl Client<'_> {
             .unwrap())
     }
 
+    fn get_mut_session(&mut self, user_id: &str) -> Result<&mut Option<String>, Error> {
+        Ok(&mut self
+            .homeservers_cache
+            .get_mut(user_id)
+            .ok_or(Error::UserNotSignedUp)?
+            .session_id)
+    }
+
     /* "REPOS" RELATED LOGIC */
 
     /// Create repository for user
@@ -138,11 +146,7 @@ impl Client<'_> {
         match request(
             Method::PUT,
             url.clone(),
-            &mut self
-                .homeservers_cache
-                .get_mut(user_id)
-                .ok_or(Error::UserNotSignedUp)?
-                .session_id,
+            self.get_mut_session(user_id)?,
             None,
             None,
         ) {
@@ -177,11 +181,7 @@ impl Client<'_> {
         let response = request(
             Method::PUT,
             url.clone(),
-            &mut self
-                .homeservers_cache
-                .get_mut(user_id)
-                .ok_or(Error::UserNotSignedUp)?
-                .session_id,
+            self.get_mut_session(user_id)?,
             Some(&headers),
             Some(payload.to_string()),
         );
@@ -202,11 +202,7 @@ impl Client<'_> {
         let response = request(
             Method::GET,
             url.clone(),
-            &mut self
-                .homeservers_cache
-                .get_mut(user_id)
-                .ok_or(Error::UserNotSignedUp)?
-                .session_id,
+            self.get_mut_session(user_id)?,
             None,
             None,
         );
@@ -227,11 +223,7 @@ impl Client<'_> {
         let response = request(
             Method::DELETE,
             url.clone(),
-            &mut self
-                .homeservers_cache
-                .get_mut(user_id)
-                .ok_or(Error::UserNotSignedUp)?
-                .session_id,
+            self.get_mut_session(user_id)?,
             None,
             None,
         );
