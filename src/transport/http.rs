@@ -59,7 +59,7 @@ mod tests {
             body: &b"test".to_vec(),
             headers: vec![("Set-Cookie", "sessionId=123")],
         };
-        let (server, url) = test_utils::create_server(vec![dummy_test_mock_params]);
+        let (mut server, url) = test_utils::create_server(vec![dummy_test_mock_params]);
 
         let mut session_id = None;
         let headers = HeaderMap::new();
@@ -72,5 +72,7 @@ mod tests {
         assert!(session_id.is_some());
         assert_eq!(session_id.unwrap(), "123");
         assert_eq!(res.unwrap(), "test");
+
+        server.reset();
     }
 }

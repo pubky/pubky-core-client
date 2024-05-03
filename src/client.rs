@@ -30,9 +30,7 @@ pub struct Client<'a> {
 }
 
 impl Client<'_> {
-    pub fn new<'a>(
-        bootstrap: Option<&'a Vec<String>>,
-    ) -> Client<'a> {
+    pub fn new<'a>(bootstrap: Option<&'a Vec<String>>) -> Client<'a> {
         Client {
             homeservers_cache: HashMap::new(),
             bootstrap,
@@ -41,7 +39,11 @@ impl Client<'_> {
 
     /* "AUTH" RELATED LOGIC */
     /// signup
-    pub fn signup(&mut self, seed: Option<[u8; 32]>, homeserver_url: Option<Url>) -> Result<String, Error> {
+    pub fn signup(
+        &mut self,
+        seed: Option<[u8; 32]>,
+        homeserver_url: Option<Url>,
+    ) -> Result<String, Error> {
         let seed = seed.unwrap_or(crypto::random_bytes(32).try_into().unwrap());
 
         let resolver = Resolver::new(self.bootstrap);
@@ -57,7 +59,11 @@ impl Client<'_> {
     }
 
     /// login
-    pub fn login(&mut self, seed: Option<[u8; 32]>, homeserver_url: Option<Url>) -> Result<String, Error> {
+    pub fn login(
+        &mut self,
+        seed: Option<[u8; 32]>,
+        homeserver_url: Option<Url>,
+    ) -> Result<String, Error> {
         let seed = seed.unwrap_or(crypto::random_bytes(32).try_into().unwrap());
 
         let resolver = Resolver::new(self.bootstrap);
@@ -353,7 +359,9 @@ mod tests {
 
         assert_eq!(client.homeservers_cache.len(), 0);
 
-        client.signup(Some(*seed), Some(homeserver_url.clone())).unwrap();
+        client
+            .signup(Some(*seed), Some(homeserver_url.clone()))
+            .unwrap();
 
         assert_eq!(client.homeservers_cache.len(), 1);
         assert_eq!(
@@ -433,7 +441,9 @@ mod tests {
 
         assert_eq!(client.homeservers_cache.len(), 0);
 
-        client.login(Some(*seed), Some(homeserver_url.clone())).unwrap();
+        client
+            .login(Some(*seed), Some(homeserver_url.clone()))
+            .unwrap();
 
         assert_eq!(client.homeservers_cache.len(), 1);
         assert_eq!(

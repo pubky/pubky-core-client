@@ -1,9 +1,9 @@
 use crate::error::AuthError as Error;
+use crate::helpers::Path;
 use crate::transport::challenge::Challenge;
 use crate::transport::crypto::{zeroize, DeterministicKeyGen, Keypair, PublicKey};
 use crate::transport::http::{request, HeaderMap, Method, Url};
 use crate::transport::resolver::Resolver;
-use crate::helpers::Path;
 
 pub enum SigType {
     Signup,
@@ -56,7 +56,7 @@ impl Auth<'_> {
             Ok(user_id) => {
                 zeroize(key_pair.secret_key().as_mut());
                 Ok(user_id.to_string())
-            },
+            }
             Err(e) => return Err(e),
         }
     }
