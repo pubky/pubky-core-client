@@ -278,7 +278,7 @@ mod tests {
 
         let key_pair: Keypair = DeterministicKeyGen::generate(Some(seed));
         let user_id = key_pair.to_z32();
-        let (server, homeserver_url) = create_homeserver_mock(
+        let (mut server, homeserver_url) = create_homeserver_mock(
             user_id.to_string(),
             "repo_name".to_string(),
             "folder_path".to_string(),
@@ -286,13 +286,15 @@ mod tests {
         );
         let _ = publish_url(
             &key_pair,
-            &Url::parse(&server.url()).unwrap(),
+            &homeserver_url,
             &testnet.bootstrap,
         );
 
         let client = Client::new(Some(&testnet.bootstrap));
 
         assert_eq!(client.homeservers_cache.len(), 0);
+
+        server.reset();
     }
 
     #[test]
@@ -302,7 +304,7 @@ mod tests {
 
         let key_pair: Keypair = DeterministicKeyGen::generate(Some(seed));
         let user_id = key_pair.to_z32();
-        let (server, homeserver_url) = create_homeserver_mock(
+        let (mut server, homeserver_url) = create_homeserver_mock(
             user_id.to_string(),
             "repo_name".to_string(),
             "folder_path".to_string(),
@@ -310,7 +312,7 @@ mod tests {
         );
         let _ = publish_url(
             &key_pair,
-            &Url::parse(&server.url()).unwrap(),
+            &homeserver_url,
             &testnet.bootstrap,
         );
 
@@ -327,12 +329,14 @@ mod tests {
                 .get(&user_id)
                 .unwrap()
                 .homeserver_url,
-            Some(Url::parse(&server.url()).unwrap())
+            Some(homeserver_url)
         );
         assert_eq!(
             client.homeservers_cache.get(&user_id).unwrap().session_id,
             Some("send_signature_signup".to_string())
         );
+
+        server.reset();
     }
 
     #[test]
@@ -342,7 +346,7 @@ mod tests {
 
         let key_pair: Keypair = DeterministicKeyGen::generate(Some(seed));
         let user_id = key_pair.to_z32();
-        let (server, homeserver_url) = create_homeserver_mock(
+        let (mut server, homeserver_url) = create_homeserver_mock(
             user_id.to_string(),
             "repo_name".to_string(),
             "folder_path".to_string(),
@@ -350,10 +354,9 @@ mod tests {
         );
         let _ = publish_url(
             &key_pair,
-            &Url::parse(&server.url()).unwrap(),
+            &homeserver_url,
             &testnet.bootstrap,
         );
-        let homeserver_url = Url::parse(&server.url()).unwrap();
 
         let mut client = Client::new(Some(&testnet.bootstrap));
 
@@ -376,6 +379,8 @@ mod tests {
             client.homeservers_cache.get(&user_id).unwrap().session_id,
             Some("send_signature_signup".to_string())
         );
+
+        server.reset();
     }
 
     #[test]
@@ -385,7 +390,7 @@ mod tests {
 
         let key_pair: Keypair = DeterministicKeyGen::generate(Some(seed));
         let user_id = key_pair.to_z32();
-        let (server, homeserver_url) = create_homeserver_mock(
+        let (mut server, homeserver_url) = create_homeserver_mock(
             user_id.to_string(),
             "repo_name".to_string(),
             "folder_path".to_string(),
@@ -393,7 +398,7 @@ mod tests {
         );
         let _ = publish_url(
             &key_pair,
-            &Url::parse(&server.url()).unwrap(),
+            &homeserver_url,
             &testnet.bootstrap,
         );
 
@@ -409,12 +414,14 @@ mod tests {
                 .get(&user_id)
                 .unwrap()
                 .homeserver_url,
-            Some(Url::parse(&server.url()).unwrap())
+            Some(homeserver_url)
         );
         assert_eq!(
             client.homeservers_cache.get(&user_id).unwrap().session_id,
             Some("send_signature_login".to_string())
         );
+
+        server.reset();
     }
 
     #[test]
@@ -424,7 +431,7 @@ mod tests {
 
         let key_pair: Keypair = DeterministicKeyGen::generate(Some(seed));
         let user_id = key_pair.to_z32();
-        let (server, homeserver_url) = create_homeserver_mock(
+        let (mut server, homeserver_url) = create_homeserver_mock(
             user_id.to_string(),
             "repo_name".to_string(),
             "folder_path".to_string(),
@@ -432,10 +439,9 @@ mod tests {
         );
         let _ = publish_url(
             &key_pair,
-            &Url::parse(&server.url()).unwrap(),
+            &homeserver_url,
             &testnet.bootstrap,
         );
-        let homeserver_url = Url::parse(&server.url()).unwrap();
 
         let mut client = Client::new(Some(&testnet.bootstrap));
 
@@ -458,6 +464,8 @@ mod tests {
             client.homeservers_cache.get(&user_id).unwrap().session_id,
             Some("send_signature_login".to_string())
         );
+
+        server.reset();
     }
 
     #[test]
@@ -469,7 +477,7 @@ mod tests {
         let user_id = key_pair.to_z32();
         let repo_name = "test_repo";
 
-        let (server, homeserver_url) = create_homeserver_mock(
+        let (mut server, homeserver_url) = create_homeserver_mock(
             user_id.to_string(),
             repo_name.to_string(),
             "folder_path".to_string(),
@@ -477,7 +485,7 @@ mod tests {
         );
         let _ = publish_url(
             &key_pair,
-            &Url::parse(&server.url()).unwrap(),
+            &homeserver_url,
             &testnet.bootstrap,
         );
         let mut client = Client::new(Some(&testnet.bootstrap));
@@ -493,12 +501,14 @@ mod tests {
                 .get(&user_id)
                 .unwrap()
                 .homeserver_url,
-            Some(Url::parse(&server.url()).unwrap())
+            Some(homeserver_url)
         );
         assert_eq!(
             client.homeservers_cache.get(&user_id).unwrap().session_id,
             Some("create_repo".to_string())
         );
+
+        server.reset();
     }
 
     #[test]
@@ -511,7 +521,7 @@ mod tests {
 
         let repo_name = "test_repo";
         let folder_path = "test_path";
-        let (server, homeserver_url) = create_homeserver_mock(
+        let (mut server, homeserver_url) = create_homeserver_mock(
             user_id.to_string(),
             repo_name.to_string(),
             folder_path.to_string(),
@@ -520,7 +530,7 @@ mod tests {
 
         let _ = publish_url(
             &key_pair,
-            &Url::parse(&server.url()).unwrap(),
+            &homeserver_url,
             &testnet.bootstrap,
         );
 
@@ -547,12 +557,14 @@ mod tests {
                 .get(&user_id)
                 .unwrap()
                 .homeserver_url,
-            Some(Url::parse(&server.url()).unwrap())
+            Some(homeserver_url)
         );
         assert_eq!(
             client.homeservers_cache.get(&user_id).unwrap().session_id,
             Some("create_folder".to_string())
         );
+
+        server.reset();
     }
 
     #[test]
@@ -567,7 +579,7 @@ mod tests {
         let folder_path = "test_path";
         let data = "test_payload";
 
-        let (server, homeserver_url) = create_homeserver_mock(
+        let (mut server, homeserver_url) = create_homeserver_mock(
             user_id.to_string(),
             repo_name.to_string(),
             folder_path.to_string(),
@@ -576,7 +588,7 @@ mod tests {
 
         let _ = publish_url(
             &key_pair,
-            &Url::parse(&server.url()).unwrap(),
+            &homeserver_url,
             &testnet.bootstrap,
         );
 
@@ -599,6 +611,8 @@ mod tests {
             client.homeservers_cache.get(&user_id).unwrap().session_id,
             Some("get_data".to_string())
         );
+
+        server.reset();
     }
 
     #[test]
@@ -611,7 +625,7 @@ mod tests {
         let repo_name = "test_repo";
         let folder_path = "test_path";
 
-        let (server, homeserver_url) = create_homeserver_mock(
+        let (mut server, homeserver_url) = create_homeserver_mock(
             user_id.to_string(),
             repo_name.to_string(),
             folder_path.to_string(),
@@ -620,7 +634,7 @@ mod tests {
 
         let _ = publish_url(
             &key_pair,
-            &Url::parse(&server.url()).unwrap(),
+            &homeserver_url,
             &testnet.bootstrap,
         );
 
@@ -637,11 +651,13 @@ mod tests {
                 .get(&user_id)
                 .unwrap()
                 .homeserver_url,
-            Some(Url::parse(&server.url()).unwrap())
+            Some(homeserver_url)
         );
         assert_eq!(
             client.homeservers_cache.get(&user_id).unwrap().session_id,
             Some("delete_data".to_string())
         );
+
+        server.reset();
     }
 }
