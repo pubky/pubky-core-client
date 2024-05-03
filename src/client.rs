@@ -28,18 +28,16 @@ impl Client<'_> {
     ///
     /// # Example
     /// ```
-    /// # #[cfg(doctest)]
-    /// # {
+    /// #[cfg(doctest)]
     /// # use pubky_core_client::test_utils::*;
-    /// use pubky_core_client::client::Client;
     /// # use mainline::dht::Testnet;
+    /// use pubky_core_client::client::Client;
     ///
-    /// let bootstrap = None;
+    /// let bootstrap: Option<&Vec<String>> = None;
     /// # let testnet = Testnet::new(10);
     /// # let bootstrap = Some(&testnet.bootstrap);
     ///
     /// let client = Client::new(bootstrap);
-    /// # }
     /// ```
     pub fn new<'a>(bootstrap: Option<&'a Vec<String>>) -> Client<'a> {
         Client {
@@ -55,23 +53,33 @@ impl Client<'_> {
     /// # Example
     /// ```
     /// # #[cfg(doctest)]
-    /// # {
     /// # use pubky_core_client::test_utils::*;
+    ///
+    /// # use mainline::dht::Testnet;
+    /// # use pubky_core_client::client::Client;
+    ///
+    /// # let testnet = Testnet::new(10);
+    /// # let bootstrap = Some(&testnet.bootstrap);
+    ///
+    /// # let mut client = Client::new(bootstrap);
+    ///
+    /// use url::Url;
     /// use pubky_core_client::utils::{generate_seed, get_user_id};
-    /// seed = generate_seed();
+    /// let seed = generate_seed();
     ///
     /// // URL is not provided, thus will be resolved from the client's DHT using seed's public key
     /// let homeserver_url = None;
-    /// let user_id = clinet.signup(seed, homeserver_url);
+    /// let user_id = client.signup(seed, homeserver_url);
     ///
-    /// assert_eq!(user_id, get_user_id(Some(&seed)));
+    /// assert!(user_id.is_ok());
+    /// assert_eq!(user_id.unwrap(), get_user_id(Some(&seed)));
     ///
     /// // URL is provided, thus will be called directly
     /// let homeserver_url = Some(Url::parse("http://localhost:8080").unwrap());
-    /// let user_id = clinet.signup(seed, homeserver_url);
+    /// let user_id = client.signup(seed, homeserver_url);
     ///
-    /// assert_eq!(user_id, get_user_id(Some(&seed)));
-    /// # }
+    /// assert!(user_id.is_ok());
+    /// assert_eq!(user_id.unwrap(), get_user_id(Some(&seed)));
     /// ```
     pub fn signup(&mut self, seed: [u8; 32], homeserver_url: Option<Url>) -> Result<String, Error> {
         let resolver = Resolver::new(self.bootstrap);
@@ -86,7 +94,8 @@ impl Client<'_> {
         }
     }
 
-    /// login
+    /// Login to the homeserver using seed either with or without homeserver url. In case if homeserver url is not provided it will be resolved from the seed's public key. URL will be republished to DHT using [Pkarr](http://github.com/Nhubei/pkarr/)
+    ///
     pub fn login(&mut self, seed: [u8; 32], homeserver_url: Option<Url>) -> Result<String, Error> {
         let resolver = Resolver::new(self.bootstrap);
         let mut auth = Auth::new(resolver, homeserver_url);
@@ -100,7 +109,7 @@ impl Client<'_> {
         }
     }
 
-    /// logout
+    /// Logout from the homeserver associated with the user_id. It will remove the user_id from the cache. If the user_id is not found in the cache it will return an error. If the logout fails it will return an error.
     pub fn logout(&mut self, user_id: String) -> Result<String, Error> {
         match self
             .homeservers_cache
@@ -116,7 +125,7 @@ impl Client<'_> {
         }
     }
 
-    /// session
+    /// Requst session from the homeserver associated with the user_id. If the user_id is not found in the cache it will return an error. If the session retrieval fails it will return an error.
     pub fn session(&mut self, user_id: String) -> Result<String, Error> {
         match self
             .homeservers_cache
