@@ -63,20 +63,11 @@ impl Auth {
 
     /// Logout from a specific account at the config homeserver
     pub fn logout(&mut self, user_id: &str) -> Result<String, Error> {
-        if self.homeserver_url.is_none() {
-            return Err(Error::NoHomeserver);
-        }
-
         if self.session_id.is_none() {
             return Err(Error::NoSession);
         }
 
-        let url = self
-            .homeserver_url
-            .clone()
-            .unwrap()
-            .join(&Path::get_session_string(Some(user_id)))
-            .unwrap();
+        let url = self.get_homeserver_url(Path::get_session_string(Some(user_id)))?;
 
         match request(Method::DELETE, url, &mut self.session_id, None, None) {
             Ok(_) => Ok(self.session_id.take().unwrap().clone()),
@@ -94,12 +85,7 @@ impl Auth {
             return Err(Error::NoSession);
         }
 
-        let url = self
-            .homeserver_url
-            .clone()
-            .unwrap()
-            .join(&Path::get_session_string(None))
-            .unwrap();
+        let url = self.get_homeserver_url(Path::get_session_string(None))?;
 
         match request(Method::GET, url.clone(), &mut self.session_id, None, None) {
             Ok(response) => {
@@ -133,12 +119,7 @@ impl Auth {
             SigType::Login => Path::get_session_string(Some(&user_id)),
         };
 
-        let url = self
-            .homeserver_url
-            .clone()
-            .unwrap()
-            .join(path.as_str())
-            .unwrap();
+        let url = self.get_homeserver_url(path)?;
 
         let mut headers = HeaderMap::new();
         headers.insert(
@@ -170,17 +151,20 @@ impl Auth {
             };
         };
 
-        let url = self
-            .homeserver_url
-            .clone()
-            .unwrap()
-            .join(&Path::get_challenge_string())
-            .unwrap();
+        let url = self.get_homeserver_url(Path::get_challenge_string())?;
 
         match request(Method::GET, url.clone(), &mut self.session_id, None, None) {
             Ok(response) => Ok(Challenge::deserialize(response.as_bytes())),
             Err(e) => Err(Error::FailedToGetChallenge(e)),
         }
+    }
+
+    fn get_homeserver_url(&self, path: String) -> Result<Url, Error> {
+        if self.homeserver_url.is_none() {
+            return Err(Error::NoHomeserver);
+        }
+
+        Ok(self.homeserver_url.clone().unwrap().join(&path).unwrap())
     }
 }
 
