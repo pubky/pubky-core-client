@@ -715,6 +715,29 @@ mod tests {
     }
 
     #[test]
+    fn test_client_signup_with_seed_to_non_existing_server() {
+        use crate::error::*;
+
+        let testnet = Testnet::new(10);
+        let seed = generate_seed();
+
+        let user_id = get_user_id(Some(&seed));
+        let mut client = Client::new(Some(testnet.bootstrap));
+
+        assert_eq!(client.homeservers_cache.len(), 0);
+
+        let res = client.signup(seed, None);
+
+        assert_eq!(client.homeservers_cache.len(), 0);
+        assert_eq!(
+            res.unwrap_err(),
+            ClientError::FailedToSignup(AuthError::FailedToResolveHomeserver(
+                DHTError::EntryNotFound(user_id)
+            ))
+        );
+    }
+
+    #[test]
     fn test_client_login_with_seed() {
         let testnet = Testnet::new(10);
         let seed = generate_seed();

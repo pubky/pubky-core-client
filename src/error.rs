@@ -1,7 +1,7 @@
 use pkarr::Error as PkarrError;
 use url::ParseError as UrlParseError;
 
-#[derive(thiserror::Error, Debug)]
+#[derive(thiserror::Error, Debug, PartialEq)]
 pub enum ClientError {
     /// Error when trying to create a new client on the homeserver
     #[error("Failed to signup: {0}")]
@@ -44,7 +44,7 @@ pub enum ClientError {
     InvalidInputForUrl,
 }
 
-#[derive(thiserror::Error, Debug)]
+#[derive(thiserror::Error, Debug, PartialEq)]
 pub enum AuthError {
     /// Error when trying to get a challenge from the homeserver
     #[error("Failed to get challenge: {0}")]
@@ -79,7 +79,7 @@ pub enum AuthError {
     FailedToLogout(HTTPError),
 }
 
-#[derive(thiserror::Error, Debug)]
+#[derive(thiserror::Error, Debug, PartialEq)]
 pub enum HTTPError {
     /// Error when trying to send an HTTP request
     #[error("Failed to send HTTP request: {0}")]
@@ -90,7 +90,7 @@ pub enum HTTPError {
     ResponseParseFailed,
 }
 
-#[derive(thiserror::Error, Debug)]
+#[derive(thiserror::Error, Debug, PartialEq)]
 pub enum ChallengeError {
     /// Error when trying to parse a challenge
     #[error("Expired challenge")]
@@ -101,7 +101,7 @@ pub enum ChallengeError {
     InvalidSignature,
 }
 
-#[derive(thiserror::Error, Debug, Clone)]
+#[derive(thiserror::Error, Debug, Clone, PartialEq)]
 pub enum DHTError {
     /// Error when trying to resolve a DHT entry
     #[error("DHT entry not found: {0}")]
