@@ -483,10 +483,7 @@ impl Client {
 
     /// Get data from user's repository and return it as a JSON(?)
     pub fn get(&mut self, user_id: &str, repo_name: &str, path: &str) -> Result<String, Error> {
-        let url = &self
-            .get_home_server_url(user_id)?
-            .join(&Path::get_repo_string(user_id, repo_name, Some(path)))
-            .unwrap();
+        let url = &self.get_url_path(user_id, repo_name, Some(path))?;
 
         match request(
             Method::GET,
@@ -502,10 +499,7 @@ impl Client {
 
     /// Delete data from user's repository
     pub fn delete(&mut self, user_id: &str, repo_name: &str, path: &str) -> Result<(), Error> {
-        let url = &self
-            .get_home_server_url(user_id)?
-            .join(&Path::get_repo_string(user_id, repo_name, Some(path)))
-            .unwrap();
+        let url = &self.get_url_path(user_id, repo_name, Some(path))?;
 
         match request(
             Method::DELETE,
