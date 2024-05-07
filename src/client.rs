@@ -142,7 +142,41 @@ impl Client {
         }
     }
 
-    /// Logout from the homeserver associated with the user_id. It will remove the user_id from the cache. If the user_id is not found in the cache it will return an error. If the logout fails it will return an error.
+    /// Logout from the homeserver associated with the `user_id`. It will remove the `user_id` from the internal cache. If the `user_id` is not found in the cache it will return an error. If the logout fails it will return an error.
+    ///
+    /// # Parameters
+    /// * `user_id` - User's identity
+    ///
+    /// # Returns
+    /// * `Result<String, Error>` - Session ID which was associated with used
+    ///
+    /// # Errors
+    /// * `Error::UserNotSignedUp` - If user is not signed up
+    /// * `Error::FailedToLogout` - If logout fails
+    ///
+    /// # Example
+    /// ```
+    /// use pubky_core_client::client::Client;
+    /// use pubky_core_client::utils::generate_seed;
+    /// use url::Url;
+    /// # use mainline::dht::Testnet;
+    ///
+    /// let bootstrap: Option<Vec<String>> = None;
+    /// let homeserver_url: Option<Url> = None;
+    /// # let testnet = Testnet::new(10);
+    /// # let bootstrap = Some(testnet.bootstrap);
+    ///
+    /// // Client needs to be mutable to perform signup as it will update the cache with user's identity
+    /// let mut client = Client::new(None);
+    /// let seed = generate_seed();
+    ///
+    /// match client.login(seed, homeserver_url) {
+    ///      Ok(user_id) => {
+    ///           client.logout(user_id);
+    ///      },
+    ///      Err(e) => println!("{e:?}")
+    /// };
+    /// ```
     pub fn logout(&mut self, user_id: String) -> Result<String, Error> {
         match self
             .homeservers_cache
