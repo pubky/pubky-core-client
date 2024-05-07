@@ -345,9 +345,9 @@ impl Client {
         path: Option<&str>,
     ) -> Result<Url, Error> {
         let url = &self.get_home_server_url(user_id)?;
-        let path = Path::get_repo_string(user_id, repo_name, path);
-        let url = url.join(&path);
-        match url {
+        let path = Path::get_repo_string(user_id, repo_name, path)?;
+
+        match url.join(&path) {
             Ok(url) => Ok(url),
             Err(_) => Err(Error::InvalidInputForUrl),
         }
@@ -836,12 +836,8 @@ mod tests {
 
         assert_eq!(
             result.unwrap(),
-            homeserver_url
-                .join(&Path::get_repo_string(
-                    &user_id,
-                    repo_name,
-                    Some(folder_path)
-                ))
+            client
+                .get_url_path(&user_id, repo_name, Some(folder_path))
                 .unwrap()
         );
         assert_eq!(client.homeservers_cache.len(), 1);

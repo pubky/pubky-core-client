@@ -1,3 +1,4 @@
+use crate::error::PathError as Error;
 pub struct Path {}
 
 impl Path {
@@ -16,16 +17,35 @@ impl Path {
         format!("/mvp/users/{}/pkarr", user_id)
     }
 
-    pub fn get_repo_string(user_id: &str, repo_name: &str, path: Option<&str>) -> String {
+    pub fn get_repo_string(
+        user_id: &str,
+        repo_name: &str,
+        path: Option<&str>,
+    ) -> Result<String, Error> {
+        if user_id.contains("..") || repo_name.contains("..") {
+            return Err(Error::InvalidPath);
+        }
         match path {
             Some(path) => {
+                if path.contains("..") {
+                    return Err(Error::InvalidPath);
+                }
+
                 if path.starts_with("/") {
-                    format!("/mvp/users/{}/repos/{}/{}", user_id, repo_name, &path[1..])
+                    Ok(format!(
+                        "/mvp/users/{}/repos/{}/{}",
+                        user_id,
+                        repo_name,
+                        &path[1..]
+                    ))
                 } else {
-                    format!("/mvp/users/{}/repos/{}/{}", user_id, repo_name, path)
+                    Ok(format!(
+                        "/mvp/users/{}/repos/{}/{}",
+                        user_id, repo_name, path
+                    ))
                 }
             }
-            None => format!("/mvp/users/{}/repos/{}", user_id, repo_name),
+            None => Ok(format!("/mvp/users/{}/repos/{}", user_id, repo_name)),
         }
     }
 }
@@ -47,16 +67,36 @@ mod tests {
             "/mvp/users/user_id/pkarr"
         );
         assert_eq!(
-            Path::get_repo_string("user_id", "repo_name", None),
+            Path::get_repo_string("user_id", "repo_name", None).unwrap(),
             "/mvp/users/user_id/repos/repo_name"
         );
         assert_eq!(
-            Path::get_repo_string("user_id", "repo_name", Some("path")),
+            Path::get_repo_string("user_id", "repo_name", Some("path")).unwrap(),
             "/mvp/users/user_id/repos/repo_name/path"
         );
         assert_eq!(
-            Path::get_repo_string("user_id", "repo_name", Some("/path")),
+            Path::get_repo_string("user_id", "repo_name", Some("/path")).unwrap(),
             "/mvp/users/user_id/repos/repo_name/path"
+        );
+
+        assert_eq!(
+          Path::get_repo_string("../user_id", "repo_name", Some("path")).unwrap_err(),
+          Error::InvalidPath
+        );
+
+        assert_eq!(
+          Path::get_repo_string("user_id", "../repo_name", Some("path")).unwrap_err(),
+          Error::InvalidPath
+        );
+
+        assert_eq!(
+          Path::get_repo_string("user_id", "repo_name", Some("../path")).unwrap_err(),
+          Error::InvalidPath
+        );
+
+        assert_eq!(
+          Path::get_repo_string("user_id/..", "repo_name", Some("../path")).unwrap_err(),
+          Error::InvalidPath
         );
     }
 }
