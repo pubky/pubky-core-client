@@ -172,20 +172,20 @@ impl Client {
     ///
     /// match client.login(seed, homeserver_url) {
     ///      Ok(user_id) => {
-    ///           client.logout(user_id);
+    ///           client.logout(&user_id);
     ///      },
     ///      Err(e) => println!("{e:?}")
     /// };
     /// ```
-    pub fn logout(&mut self, user_id: String) -> Result<String, Error> {
+    pub fn logout(&mut self, user_id: &str) -> Result<String, Error> {
         match self
             .homeservers_cache
-            .get_mut(&user_id)
+            .get_mut(user_id)
             .ok_or(Error::UserNotSignedUp)?
-            .logout(&user_id)
+            .logout(user_id)
         {
             Ok(session_id) => {
-                let _ = self.homeservers_cache.remove(&user_id);
+                let _ = self.homeservers_cache.remove(user_id);
                 Ok(session_id)
             }
             Err(e) => Err(Error::FailedToLogout(e)),
@@ -223,15 +223,15 @@ impl Client {
     ///
     /// match client.login(seed, homeserver_url) {
     ///      Ok(user_id) => {
-    ///           client.session(user_id);
+    ///           client.session(&user_id);
     ///      },
     ///      Err(e) => println!("{e:?}")
     /// };
     /// ```
-    pub fn session(&mut self, user_id: String) -> Result<String, Error> {
+    pub fn session(&mut self, user_id: &str) -> Result<String, Error> {
         match self
             .homeservers_cache
-            .get_mut(&user_id)
+            .get_mut(user_id)
             .ok_or(Error::UserNotSignedUp)?
             .session()
         {
@@ -240,7 +240,40 @@ impl Client {
         }
     }
 
-    /// Geet homeserver url associated with `user_id`
+    /// Geet `homeserver_url` currently associated with `user_id`
+    ///
+    /// # Parameters
+    /// * `user_id` - User's identity
+    ///
+    /// # Returns
+    /// * `Result<Url, Error>` - URL of the `homeserver_url`
+    ///
+    /// # Errors
+    /// * `Error::UserNotSignedUp` - If user is not signed up
+    ///
+    /// # Example
+    /// ```
+    /// use pubky_core_client::client::Client;
+    /// use pubky_core_client::utils::generate_seed;
+    /// use url::Url;
+    /// # use mainline::dht::Testnet;
+    ///
+    /// let bootstrap: Option<Vec<String>> = None;
+    /// let homeserver_url: Option<Url> = None;
+    /// # let testnet = Testnet::new(10);
+    /// # let bootstrap = Some(testnet.bootstrap);
+    ///
+    /// // Client needs to be mutable to perform signup as it will update the cache with user's identity
+    /// let mut client = Client::new(None);
+    /// let seed = generate_seed();
+    ///
+    /// match client.login(seed, homeserver_url) {
+    ///      Ok(user_id) => {
+    ///           client.get_home_server_url(&user_id);
+    ///      },
+    ///      Err(e) => println!("{e:?}")
+    /// };
+    /// ```
     pub fn get_home_server_url(&self, user_id: &str) -> Result<Url, Error> {
         Ok(self
             .homeservers_cache
