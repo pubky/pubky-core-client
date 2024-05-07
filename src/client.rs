@@ -66,9 +66,11 @@ impl Client {
     /// ```
     /// use pubky_core_client::client::Client;
     /// use pubky_core_client::utils::generate_seed;
+    /// use url::Url;
     /// # use mainline::dht::Testnet;
     ///
     /// let bootstrap: Option<Vec<String>> = None;
+    /// let homeserver_url: Option<Url> = None;
     /// # let testnet = Testnet::new(10);
     /// # let bootstrap = Some(testnet.bootstrap);
     ///
@@ -76,7 +78,7 @@ impl Client {
     /// let mut client = Client::new(None);
     /// let seed = generate_seed();
     ///
-    /// match client.signup(seed, None) {
+    /// match client.signup(seed, homeserver_url) {
     ///      Ok(user_id) => println!("{user_id}"),
     ///      Err(e) => println!("{e:?}")
     /// }
@@ -105,6 +107,28 @@ impl Client {
     ///
     /// # Errors
     /// * `Error::FailedToLogin` - If login fails
+    ///
+    /// # Example
+    /// ```
+    /// use pubky_core_client::client::Client;
+    /// use pubky_core_client::utils::generate_seed;
+    /// use url::Url;
+    /// # use mainline::dht::Testnet;
+    ///
+    /// let bootstrap: Option<Vec<String>> = None;
+    /// let homeserver_url: Option<Url> = None;
+    /// # let testnet = Testnet::new(10);
+    /// # let bootstrap = Some(testnet.bootstrap);
+    ///
+    /// // Client needs to be mutable to perform signup as it will update the cache with user's identity
+    /// let mut client = Client::new(None);
+    /// let seed = generate_seed();
+    ///
+    /// match client.login(seed, homeserver_url) {
+    ///      Ok(user_id) => println!("{user_id}"),
+    ///      Err(e) => println!("{e:?}")
+    /// }
+    /// ```
     pub fn login(&mut self, seed: [u8; 32], homeserver_url: Option<Url>) -> Result<String, Error> {
         let resolver = Resolver::new(self.bootstrap.clone());
         let mut auth = Auth::new(resolver, homeserver_url);
