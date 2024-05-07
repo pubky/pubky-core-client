@@ -3,7 +3,7 @@ use pkarr::{dns, Keypair, PkarrClient, PublicKey, SignedPacket};
 use reqwest::Url;
 use std::collections::HashMap;
 
-pub struct Resolver<'a> {
+pub struct Resolver {
     // NOTE: Cache is needed mostly for DHT lookups. It will be implemented in pkarr v2
     // So cache could be removed after update
     // TODO: add suport for different cache strategeies:
@@ -12,12 +12,12 @@ pub struct Resolver<'a> {
     // - read ahead
     // - read behind (current implementation)
     cache: HashMap<String, Url>,
-    bootstrap: Option<&'a Vec<String>>,
+    bootstrap: Option<Vec<String>>,
 }
 
-impl Resolver<'_> {
+impl Resolver {
     /// Creates a new resolver
-    pub fn new<'a>(bootstrap: Option<&'a Vec<String>>) -> Resolver<'a> {
+    pub fn new(bootstrap: Option<Vec<String>>) -> Resolver {
         Resolver {
             cache: HashMap::new(),
             bootstrap,
@@ -79,8 +79,9 @@ impl Resolver<'_> {
     /// Publish record to DHT
     pub fn publish(&mut self, key_pair: &Keypair, homeserver_url: &Url) -> Result<(), Error> {
         let client = if self.bootstrap.is_some() {
+            let bootstrap = self.bootstrap.clone().unwrap();
             PkarrClient::builder()
-                .bootstrap(self.bootstrap.unwrap())
+                .bootstrap(&bootstrap)
                 .build()?
         } else {
             PkarrClient::builder().build()?
@@ -156,8 +157,9 @@ impl Resolver<'_> {
     /// Looks up a public key in the DHT
     fn lookup<'a>(&self, public_key: &PublicKey) -> Result<SignedPacket, Error> {
         let client = if self.bootstrap.is_some() {
+            let bootstrap = self.bootstrap.clone().unwrap();
             PkarrClient::builder()
-                .bootstrap(self.bootstrap.unwrap())
+                .bootstrap(bootstrap.as_ref())
                 .build()?
         } else {
             PkarrClient::builder().build()?
@@ -186,7 +188,7 @@ mod tests {
 
         let url = Url::parse("https://datastore.example.com").unwrap();
 
-        let mut resolver = Resolver::new(Some(&testnet.bootstrap));
+        let mut resolver = Resolver::new(Some(testnet.bootstrap));
         resolver.publish(&key, &url).unwrap();
         let res = resolver.resolve_homeserver(&key.public_key()).unwrap();
 

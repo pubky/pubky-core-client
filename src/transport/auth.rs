@@ -10,13 +10,13 @@ pub enum SigType {
     Login,
 }
 
-pub struct Auth<'a> {
+pub struct Auth {
     pub homeserver_url: Option<Url>,
     pub session_id: Option<String>,
-    resolver: Resolver<'a>,
+    resolver: Resolver,
 }
 
-impl Auth<'_> {
+impl Auth {
     pub fn new(resolver: Resolver, homeserver_url: Option<Url>) -> Auth {
         Auth {
             resolver,
@@ -205,7 +205,7 @@ mod test {
             "data".to_string(),
         );
 
-        let resolver = publish_url(&key_pair, &homeserver_url, &testnet.bootstrap);
+        let resolver = publish_url(&key_pair, &homeserver_url, testnet.bootstrap.clone());
 
         let mut auth = Auth::new(resolver, None);
 
@@ -222,7 +222,7 @@ mod test {
         assert_eq!(res_session_id, "send_signature_signup");
 
         // TEST SIGNUP AGAIN
-        let resolver = Resolver::new(Some(&testnet.bootstrap));
+        let resolver = Resolver::new(Some(testnet.bootstrap.clone()));
         let mut auth = Auth::new(resolver, Some(homeserver_url.clone()));
 
         let got_user_id = auth.signup(seed).unwrap();

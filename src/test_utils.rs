@@ -9,8 +9,8 @@ use crate::utils::now;
 pub fn publish_url<'a>(
     key_pair: &'a Keypair,
     url: &'a Url,
-    bootstrap: &'a Vec<String>,
-) -> Resolver<'a> {
+    bootstrap: Vec<String>,
+) -> Resolver {
     let mut resolver = Resolver::new(Some(bootstrap));
     resolver.publish(key_pair, url).unwrap();
 

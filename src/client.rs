@@ -18,28 +18,20 @@ use crate::transport::{
 ///
 /// The CRUD operations for homeserver are performed using http requests.
 
-pub struct Client<'a> {
-    homeservers_cache: HashMap<String, Auth<'a>>,
-    bootstrap: Option<&'a Vec<String>>,
+pub struct Client {
+    homeservers_cache: HashMap<String, Auth>,
+    bootstrap: Option<Vec<String>>,
 }
 
-impl Client<'_> {
+impl Client {
     /// Create a new instance of Client
     ///
-    /// # Example
-    /// ```
-    /// # #[cfg(doctest)]
-    /// # use pubky_core_client::test_utils::*;
-    /// # use mainline::dht::Testnet;
-    /// use pubky_core_client::client::Client;
+    /// # Parameters
+    /// * `bootstrap` - Optional pointer to the list of bootstraping DHT nodes to resolve user's homeserver url.
     ///
-    /// let bootstrap: Option<&Vec<String>> = None;
-    /// # let testnet = Testnet::new(10);
-    /// # let bootstrap = Some(&testnet.bootstrap);
-    ///
-    /// let client = Client::new(bootstrap);
-    /// ```
-    pub fn new<'a>(bootstrap: Option<&'a Vec<String>>) -> Client<'a> {
+    /// # Returns
+    /// * `Client` - New instance of Client
+    pub fn new(bootstrap: Option<Vec<String>>) -> Client {
         Client {
             homeservers_cache: HashMap::new(),
             bootstrap,
@@ -49,39 +41,8 @@ impl Client<'_> {
     /* "AUTH" RELATED LOGIC */
 
     /// Signup to the homeserver using seed either with or without homeserver url. In case if homeserver url is not provided it will be resolved from the seed's public key. URL will be republished to DHT using [Pkarr](https://github.com/Nuhvi/pkarr/)
-    ///
-    /// # Example
-    /// ```
-    /// # #[cfg(doctest)]
-    /// # use pubky_core_client::test_utils::*;
-    /// #
-    /// # use mainline::dht::Testnet;
-    /// # use pubky_core_client::client::Client;
-    /// #
-    /// # let testnet = Testnet::new(10);
-    /// # let bootstrap = Some(&testnet.bootstrap);
-    /// # let mut client = Client::new(bootstrap);
-    /// #
-    /// use url::Url;
-    /// use pubky_core_client::utils::{generate_seed, get_user_id};
-    /// let seed = generate_seed();
-    ///
-    /// // URL is not provided, thus will be resolved from the client's DHT using seed's public key
-    /// let homeserver_url = None;
-    /// let user_id = client.signup(seed, homeserver_url);
-    ///
-    /// assert!(user_id.is_ok());
-    /// assert_eq!(user_id.unwrap(), get_user_id(Some(&seed)));
-    ///
-    /// // URL is provided, thus will be called directly
-    /// let homeserver_url = Some(Url::parse("http://localhost:8080").unwrap());
-    /// let user_id = client.signup(seed, homeserver_url);
-    ///
-    /// assert!(user_id.is_ok());
-    /// assert_eq!(user_id.unwrap(), get_user_id(Some(&seed)));
-    /// ```
     pub fn signup(&mut self, seed: [u8; 32], homeserver_url: Option<Url>) -> Result<String, Error> {
-        let resolver = Resolver::new(self.bootstrap);
+        let resolver = Resolver::new(self.bootstrap.clone());
         let mut auth = Auth::new(resolver, homeserver_url);
 
         match auth.signup(&seed) {
@@ -96,7 +57,7 @@ impl Client<'_> {
     /// Login to the homeserver using seed either with or without homeserver url. In case if homeserver url is not provided it will be resolved from the seed's public key. URL will be republished to DHT using [Pkarr](http://github.com/Nhubei/pkarr/)
     ///
     pub fn login(&mut self, seed: [u8; 32], homeserver_url: Option<Url>) -> Result<String, Error> {
-        let resolver = Resolver::new(self.bootstrap);
+        let resolver = Resolver::new(self.bootstrap.clone());
         let mut auth = Auth::new(resolver, homeserver_url);
 
         match auth.login(&seed) {
@@ -305,7 +266,7 @@ mod tests {
             "data".to_string(),
         );
 
-        let client = Client::new(Some(&testnet.bootstrap));
+        let client = Client::new(Some(testnet.bootstrap));
 
         assert_eq!(client.homeservers_cache.len(), 0);
 
@@ -327,9 +288,10 @@ mod tests {
         );
         // since homeserver_url is not to be provided it will be resolved from the the seed
         // thus needs to be published beforehand
-        let _ = publish_url(&key_pair, &homeserver_url, &testnet.bootstrap);
+        let publish_net = testnet.bootstrap.clone();
+        let _ = publish_url(&key_pair, &homeserver_url, publish_net);
 
-        let mut client = Client::new(Some(&testnet.bootstrap));
+        let mut client = Client::new(Some(testnet.bootstrap));
 
         assert_eq!(client.homeservers_cache.len(), 0);
 
@@ -362,7 +324,7 @@ mod tests {
             "data".to_string(),
         );
 
-        let mut client = Client::new(Some(&testnet.bootstrap));
+        let mut client = Client::new(Some(testnet.bootstrap));
 
         assert_eq!(client.homeservers_cache.len(), 0);
 
@@ -396,9 +358,10 @@ mod tests {
         );
         // since homeserver_url is not to be provided it will be resolved from the the seed
         // thus needs to be published beforehand
-        let _ = publish_url(&key_pair, &homeserver_url, &testnet.bootstrap);
+        let publish_net = testnet.bootstrap.clone();
+        let _ = publish_url(&key_pair, &homeserver_url, publish_net);
 
-        let mut client = Client::new(Some(&testnet.bootstrap));
+        let mut client = Client::new(Some(testnet.bootstrap));
 
         assert_eq!(client.homeservers_cache.len(), 0);
 
@@ -428,7 +391,7 @@ mod tests {
             "folder_path".to_string(),
             "data".to_string(),
         );
-        let mut client = Client::new(Some(&testnet.bootstrap));
+        let mut client = Client::new(Some(testnet.bootstrap));
 
         assert_eq!(client.homeservers_cache.len(), 0);
 
@@ -461,7 +424,7 @@ mod tests {
             "folder_path".to_string(),
             "data".to_string(),
         );
-        let mut client = Client::new(Some(&testnet.bootstrap));
+        let mut client = Client::new(Some(testnet.bootstrap));
         let user_id = client.login(seed, Some(homeserver_url.clone())).unwrap();
 
         let result = client.create(&user_id, repo_name);
@@ -495,7 +458,7 @@ mod tests {
             folder_path.to_string(),
             "test_payload".to_string(),
         );
-        let mut client = Client::new(Some(&testnet.bootstrap));
+        let mut client = Client::new(Some(testnet.bootstrap));
         let user_id = client.login(seed, Some(homeserver_url.clone())).unwrap();
 
         let result = client.put(&user_id, repo_name, folder_path, "test_payload");
@@ -540,7 +503,7 @@ mod tests {
             folder_path.to_string(),
             data.to_string(),
         );
-        let mut client = Client::new(Some(&testnet.bootstrap));
+        let mut client = Client::new(Some(testnet.bootstrap));
         let user_id = client.login(seed, Some(homeserver_url.clone())).unwrap();
 
         let result = client.get(&user_id, repo_name, folder_path);
@@ -574,7 +537,7 @@ mod tests {
             folder_path.to_string(),
             "data".to_string(),
         );
-        let mut client = Client::new(Some(&testnet.bootstrap));
+        let mut client = Client::new(Some(testnet.bootstrap));
         let user_id = client.login(seed, Some(homeserver_url.clone())).unwrap();
 
         let result = client.delete(&user_id, repo_name, folder_path);
