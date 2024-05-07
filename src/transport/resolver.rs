@@ -1,5 +1,5 @@
 use crate::error::DHTError as Error;
-use pkarr::{dns, Keypair, PkarrClient, PublicKey, SignedPacket};
+use pkarr::{dns, mainline::dht::DhtSettings, Keypair, PkarrClient, PublicKey, SignedPacket};
 use reqwest::Url;
 use std::collections::HashMap;
 
@@ -78,14 +78,15 @@ impl Resolver {
 
     /// Publish record to DHT
     pub fn publish(&mut self, key_pair: &Keypair, homeserver_url: &Url) -> Result<(), Error> {
-        let client = if self.bootstrap.is_some() {
-            let bootstrap = self.bootstrap.clone().unwrap();
-            PkarrClient::builder()
-                .bootstrap(&bootstrap)
-                .build()?
-        } else {
-            PkarrClient::builder().build()?
-        };
+        let bootstrap = self.bootstrap.clone();
+        let client = PkarrClient::builder()
+            .dht_settings(DhtSettings {
+                bootstrap,
+                request_timeout: None,
+                server: None,
+                port: None,
+            })
+            .build()?;
 
         let mut packet = dns::Packet::new_reply(0);
         let home = format!("home={}", &key_pair.public_key());
@@ -156,14 +157,15 @@ impl Resolver {
 
     /// Looks up a public key in the DHT
     fn lookup<'a>(&self, public_key: &PublicKey) -> Result<SignedPacket, Error> {
-        let client = if self.bootstrap.is_some() {
-            let bootstrap = self.bootstrap.clone().unwrap();
-            PkarrClient::builder()
-                .bootstrap(bootstrap.as_ref())
-                .build()?
-        } else {
-            PkarrClient::builder().build()?
-        };
+        let bootstrap = self.bootstrap.clone();
+        let client = PkarrClient::builder()
+            .dht_settings(DhtSettings {
+                bootstrap,
+                request_timeout: None,
+                server: None,
+                port: None,
+            })
+            .build()?;
 
         match client.resolve(public_key) {
             Ok(entry) => match entry {
