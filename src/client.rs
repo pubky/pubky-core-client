@@ -339,7 +339,43 @@ impl Client {
 
     /* "REPOS" RELATED LOGIC */
 
-    /// Create repository for user
+    /// Create repository as a user on the homeserver. It will return an error if the repository creation fails.
+    ///
+    /// # Parameters
+    /// * `user_id` - User's identity
+    /// * `repo_name` - Name of the repository
+    ///
+    /// # Returns
+    /// * `Result<(), Error>` - Empty Result
+    ///
+    /// # Errors
+    /// * `Error::FailedToCreateRepository` - If repository creation fails
+    /// * `Error::UserNotSignedUp` - If user is not signed up
+    ///
+    /// # Example
+    /// ```
+    /// use pubky_core_client::client::Client;
+    /// use pubky_core_client::utils::generate_seed;
+    /// use url::Url;
+    /// # use mainline::dht::Testnet;
+    ///
+    /// let bootstrap: Option<Vec<String>> = None;
+    /// let homeserver_url: Option<Url> = None;
+    /// # let testnet = Testnet::new(10);
+    /// # let bootstrap = Some(testnet.bootstrap);
+    ///
+    /// // Client needs to be mutable to perform signup as it will update the cache with user's identity
+    /// let mut client = Client::new(None);
+    /// let seed = generate_seed();
+    ///
+    /// let repo_name = "test_repo";
+    /// match client.login(seed, homeserver_url) {
+    ///      Ok(user_id) => {
+    ///           client.create(&user_id, repo_name);
+    ///      },
+    ///      Err(e) => println!("{e:?}")
+    /// };
+    /// ```
     pub fn create(&mut self, user_id: &str, repo_name: &str) -> Result<(), Error> {
         let url = &self
             .get_home_server_url(user_id)?
