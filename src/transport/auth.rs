@@ -61,9 +61,7 @@ impl Auth {
 
     /// Logout from a specific account at the config homeserver
     pub fn logout(&mut self, user_id: &str) -> Result<String, Error> {
-        if self.session_id.is_none() {
-            return Err(Error::NoSession);
-        }
+        let _ = &self.require_session()?;
 
         let url = self.get_homeserver_url(Path::get_session_string(Some(user_id)))?;
 
@@ -75,9 +73,7 @@ impl Auth {
 
     /// Examine the current session at the config homeserver
     pub fn session(&mut self) -> Result<String, Error> {
-        if self.session_id.is_none() {
-            return Err(Error::NoSession);
-        }
+        let _ = &self.require_session()?;
 
         let url = self.get_homeserver_url(Path::get_session_string(None))?;
 
@@ -159,6 +155,14 @@ impl Auth {
         }
 
         Ok(self.homeserver_url.clone().unwrap().join(&path).unwrap())
+    }
+
+    fn require_session(&self) -> Result<(), Error> {
+        if self.session_id.is_none() {
+            return Err(Error::NoSession);
+        }
+
+        Ok(())
     }
 }
 
