@@ -34,10 +34,8 @@ impl Auth {
         };
 
         // Re-publish the homeserver url
-        match &self
-            .resolver
-            .publish(key_pair, &self.homeserver_url.clone().unwrap())
-        {
+        let homeserver_url = &self.get_homeserver_url("".to_string())?;
+        match &self.resolver.publish(key_pair, homeserver_url) {
             Ok(_) => (),
             Err(e) => return Err(Error::FailedToPublishHomeserver(e.clone())),
         };
@@ -77,10 +75,6 @@ impl Auth {
 
     /// Examine the current session at the config homeserver
     pub fn session(&mut self) -> Result<String, Error> {
-        if self.homeserver_url.is_none() {
-            return Err(Error::NoHomeserver);
-        }
-
         if self.session_id.is_none() {
             return Err(Error::NoSession);
         }
