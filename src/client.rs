@@ -9,15 +9,13 @@ use crate::transport::{
     resolver::Resolver,
 };
 
-/// This is the pubky client class. It is used for accessing pubky infrastructure for CRUD options
-/// over user's data in pubky network.
+/// This is the pubky client class. It is used for accessing pubky infrastructure for CRUD options over user's data in pubky network.
 ///
-/// Client accepts optional list of bootstraping DHT nodes to resolve user's homeserver url.
+/// Client accepts optional list of bootstraping DHT nodes to resolve user's `homeserver_url`.
 ///
-/// It has encapsulates an instance of Auth object to publish user's identity to the network, to lookup other user's homeservers which acts as a cache that matches `userId` to `homeserver_url` and corresponding `sesison_id`.
+/// It encapsulates an instance of `Auth` object to publish user's identity to the network, to lookup other user's homeservers which acts as a cache that matches `userId` to `homeserver_url` and corresponding `sesison_id`.
 ///
 /// The CRUD operations for homeserver are performed using http requests.
-
 pub struct Client {
     homeservers_cache: HashMap<String, Auth>,
     bootstrap: Option<Vec<String>>,
@@ -30,7 +28,19 @@ impl Client {
     /// * `bootstrap` - Optional pointer to the list of bootstraping DHT nodes to resolve user's homeserver url.
     ///
     /// # Returns
-    /// * `Client` - New instance of Client
+    /// * `Client` - New instance of `Client`
+    ///
+    /// # Example
+    /// ```
+    /// use pubky_core_client::client::Client;
+    /// # use mainline::dht::Testnet;
+    ///
+    /// let bootstrap: Option<Vec<String>> = None;
+    /// # let testnet = Testnet::new(10);
+    /// # let bootstrap = Some(testnet.bootstrap);
+    ///
+    /// let client = Client::new(bootstrap);
+    /// ```
     pub fn new(bootstrap: Option<Vec<String>>) -> Client {
         Client {
             homeservers_cache: HashMap::new(),
@@ -40,7 +50,37 @@ impl Client {
 
     /* "AUTH" RELATED LOGIC */
 
-    /// Signup to the homeserver using seed either with or without homeserver url. In case if homeserver url is not provided it will be resolved from the seed's public key. URL will be republished to DHT using [Pkarr](https://github.com/Nuhvi/pkarr/)
+    /// Signup to the homeserver using seed either with or without homeserver url. In case if `homeserver_url` is not provided it will be resolved from the `seed`'s public key. URL will be republished to DHT using [Pkarr](https://github.com/Nuhvi/pkarr/)
+    ///
+    /// # Parameters
+    /// * `seed` - 32 bytes seed to generate user's identity
+    /// * `homeserver_url` - Optional URL of the homeserver_url
+    ///
+    /// # Returns
+    /// * `Result<String, Error>` - User's identity
+    ///
+    /// # Errors
+    /// * `Error::FailedToSignup` - If signup fails
+    ///
+    /// # Example
+    /// ```
+    /// use pubky_core_client::client::Client;
+    /// use pubky_core_client::utils::generate_seed;
+    /// # use mainline::dht::Testnet;
+    ///
+    /// let bootstrap: Option<Vec<String>> = None;
+    /// # let testnet = Testnet::new(10);
+    /// # let bootstrap = Some(testnet.bootstrap);
+    ///
+    /// // Client needs to be mutable to perform signup as it will update the cache with user's identity
+    /// let mut client = Client::new(None);
+    /// let seed = generate_seed();
+    ///
+    /// match client.signup(seed, None) {
+    ///      Ok(user_id) => println!("{user_id}"),
+    ///      Err(e) => println!("{e:?}")
+    /// }
+    /// ```
     pub fn signup(&mut self, seed: [u8; 32], homeserver_url: Option<Url>) -> Result<String, Error> {
         let resolver = Resolver::new(self.bootstrap.clone());
         let mut auth = Auth::new(resolver, homeserver_url);
@@ -54,8 +94,17 @@ impl Client {
         }
     }
 
-    /// Login to the homeserver using seed either with or without homeserver url. In case if homeserver url is not provided it will be resolved from the seed's public key. URL will be republished to DHT using [Pkarr](http://github.com/Nhubei/pkarr/)
+    /// Login to the homeserver using `seed` either with or without `homeserver_url`. In case if homeserver url is not provided it will be resolved from the seed's public key. URL will be republished to DHT using [Pkarr](http://github.com/Nhubei/pkarr/)
     ///
+    /// # Parameters
+    /// * `seed` - 32 bytes seed to generate user's identity
+    /// * `homeserver_url` - Optional URL of the homeserver_url
+    ///
+    /// # Returns
+    /// * `Result<String, Error>` - User's identity
+    ///
+    /// # Errors
+    /// * `Error::FailedToLogin` - If login fails
     pub fn login(&mut self, seed: [u8; 32], homeserver_url: Option<Url>) -> Result<String, Error> {
         let resolver = Resolver::new(self.bootstrap.clone());
         let mut auth = Auth::new(resolver, homeserver_url);
@@ -98,7 +147,7 @@ impl Client {
         }
     }
 
-    /// gets homeserver url
+    /// Geet homeserver url associated with `user_id`
     pub fn get_home_server_url(&self, user_id: &str) -> Result<Url, Error> {
         Ok(self
             .homeservers_cache
