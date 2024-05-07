@@ -481,7 +481,47 @@ impl Client {
         }
     }
 
-    /// Get data from user's repository and return it as a JSON(?)
+    /// Get data from user's repository and return it as a string.
+    ///
+    /// # Parameters
+    /// * `user_id` - User's identity
+    /// * `repo_name` - Name of the repository
+    /// * `path` - Path to the data
+    ///
+    /// # Returns
+    /// * `Result<String, Error>` - Data as a string
+    ///
+    /// # Errors
+    /// * `Error::FailedToRetrieveData` - If retrieving data fails
+    /// * `Error::UserNotSignedUp` - If user is not signed up
+    /// * `Error::InvalidInputForUrl` - If input parameters can not be converted to a valid URL
+    ///
+    /// # Example
+    /// ```
+    /// use pubky_core_client::client::Client;
+    /// use pubky_core_client::utils::generate_seed;
+    /// use url::Url;
+    /// # use mainline::dht::Testnet;
+    ///
+    /// let bootstrap: Option<Vec<String>> = None;
+    /// let homeserver_url: Option<Url> = None;
+    /// # let testnet = Testnet::new(10);
+    /// # let bootstrap = Some(testnet.bootstrap);
+    ///
+    /// // Client needs to be mutable to perform signup as it will update the cache with user's identity
+    /// let mut client = Client::new(None);
+    /// let seed = generate_seed();
+    ///
+    /// let repo_name = "test_repo";
+    /// let path = "test_path";
+    /// let payload = "{ \"data\": \"test_data\" }}";
+    /// match client.login(seed, homeserver_url) {
+    ///      Ok(user_id) => {
+    ///           client.get(&user_id, repo_name, path);
+    ///      },
+    ///      Err(e) => println!("{e:?}")
+    /// };
+    /// ```
     pub fn get(&mut self, user_id: &str, repo_name: &str, path: &str) -> Result<String, Error> {
         let url = &self.get_url_path(user_id, repo_name, Some(path))?;
 
@@ -497,7 +537,47 @@ impl Client {
         }
     }
 
-    /// Delete data from user's repository
+    /// Delete data under given path from user's repository
+    ///
+    /// # Parameters
+    /// * `user_id` - User's identity
+    /// * `repo_name` - Name of the repository
+    /// * `path` - Path to the data
+    ///
+    /// # Returns
+    /// * `Result<(), Error>` - Empty Result
+    ///
+    /// # Errors
+    /// * `Error::FailedToDeleteData` - If deleting data fails
+    /// * `Error::UserNotSignedUp` - If user is not signed up
+    /// * `Error::InvalidInputForUrl` - If input parameters can not be converted to a valid URL
+    ///
+    /// # Example
+    /// ```
+    /// use pubky_core_client::client::Client;
+    /// use pubky_core_client::utils::generate_seed;
+    /// use url::Url;
+    /// # use mainline::dht::Testnet;
+    ///
+    /// let bootstrap: Option<Vec<String>> = None;
+    /// let homeserver_url: Option<Url> = None;
+    /// # let testnet = Testnet::new(10);
+    /// # let bootstrap = Some(testnet.bootstrap);
+    ///
+    /// // Client needs to be mutable to perform signup as it will update the cache with user's identity
+    /// let mut client = Client::new(None);
+    /// let seed = generate_seed();
+    ///
+    /// let repo_name = "test_repo";
+    /// let path = "test_path";
+    /// let payload = "{ \"data\": \"test_data\" }}";
+    /// match client.login(seed, homeserver_url) {
+    ///      Ok(user_id) => {
+    ///           client.delete(&user_id, repo_name, path);
+    ///      },
+    ///      Err(e) => println!("{e:?}")
+    /// };
+    /// ```
     pub fn delete(&mut self, user_id: &str, repo_name: &str, path: &str) -> Result<(), Error> {
         let url = &self.get_url_path(user_id, repo_name, Some(path))?;
 
