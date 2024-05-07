@@ -337,6 +337,22 @@ impl Client {
             .session_id)
     }
 
+    /// Helper method to get URL path for the given `user_id`, `repo_name` and `path`
+    fn get_url_path(
+        &self,
+        user_id: &str,
+        repo_name: &str,
+        path: Option<&str>,
+    ) -> Result<Url, Error> {
+        let url = &self.get_home_server_url(user_id)?;
+        let path = Path::get_repo_string(user_id, repo_name, path);
+        let url = url.join(&path);
+        match url {
+            Ok(url) => Ok(url),
+            Err(_) => Err(Error::InvalidInputForUrl),
+        }
+    }
+
     /* "REPOS" RELATED LOGIC */
 
     /// Create repository as a user on the homeserver. It will return an error if the repository creation fails.
@@ -351,6 +367,7 @@ impl Client {
     /// # Errors
     /// * `Error::FailedToCreateRepository` - If repository creation fails
     /// * `Error::UserNotSignedUp` - If user is not signed up
+    /// * `Error::InvalidInputForUrl` - If input parameters can not be converted to a valid URL
     ///
     /// # Example
     /// ```
@@ -377,10 +394,7 @@ impl Client {
     /// };
     /// ```
     pub fn create(&mut self, user_id: &str, repo_name: &str) -> Result<(), Error> {
-        let url = &self
-            .get_home_server_url(user_id)?
-            .join(&Path::get_repo_string(user_id, repo_name, None))
-            .unwrap();
+        let url = &self.get_url_path(user_id, repo_name, None)?;
 
         match request(
             Method::PUT,
@@ -394,7 +408,48 @@ impl Client {
         }
     }
 
-    /// Put data into user's repository and return URL to this repo
+    /// Put data under given path into user's repository and return URL to this data.
+    ///
+    /// # Parameters
+    /// * `user_id` - User's identity
+    /// * `repo_name` - Name of the repository
+    /// * `path` - Path to the data
+    /// * `payload` - Data to be stored
+    ///
+    /// # Returns
+    /// * `Result<Url, Error>` - URL of the data
+    ///
+    /// # Errors
+    /// * `Error::FailedToStoreData` - If storing data fails
+    /// * `Error::UserNotSignedUp` - If user is not signed up
+    /// * `Error::InvalidInputForUrl` - If input parameters can not be converted to a valid URL
+    ///
+    /// # Example
+    /// ```
+    /// use pubky_core_client::client::Client;
+    /// use pubky_core_client::utils::generate_seed;
+    /// use url::Url;
+    /// # use mainline::dht::Testnet;
+    ///
+    /// let bootstrap: Option<Vec<String>> = None;
+    /// let homeserver_url: Option<Url> = None;
+    /// # let testnet = Testnet::new(10);
+    /// # let bootstrap = Some(testnet.bootstrap);
+    ///
+    /// // Client needs to be mutable to perform signup as it will update the cache with user's identity
+    /// let mut client = Client::new(None);
+    /// let seed = generate_seed();
+    ///
+    /// let repo_name = "test_repo";
+    /// let path = "test_path";
+    /// let payload = "{ \"data\": \"test_data\" }}";
+    /// match client.login(seed, homeserver_url) {
+    ///      Ok(user_id) => {
+    ///           client.put(&user_id, repo_name, path, payload);
+    ///      },
+    ///      Err(e) => println!("{e:?}")
+    /// };
+    /// ```
     pub fn put(
         &mut self,
         user_id: &str,
@@ -402,10 +457,7 @@ impl Client {
         path: &str,
         payload: &str,
     ) -> Result<Url, Error> {
-        let url = &self
-            .get_home_server_url(user_id)?
-            .join(&Path::get_repo_string(user_id, repo_name, Some(path)))
-            .unwrap();
+        let url = &self.get_url_path(user_id, repo_name, Some(path))?;
 
         let mut headers = HeaderMap::new();
         headers.insert(
