@@ -4,5 +4,5 @@ mod helpers;
 mod transport;
 pub mod utils;
 
-#[cfg(any(test, doctest))]
+#[cfg(test)]
 mod test_utils;

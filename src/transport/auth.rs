@@ -124,8 +124,8 @@ impl Auth<'_> {
         sig_type: &SigType,
         key_pair: &Keypair,
     ) -> Result<String, Error> {
-        let challenge = self.get_challenge(&key_pair.public_key());
-        let signature = key_pair.sign(&challenge.unwrap().signable).to_string();
+        let challenge = self.get_challenge(&key_pair.public_key())?;
+        let signature = key_pair.sign(&challenge.signable).to_string();
         let user_id = key_pair.to_z32();
 
         let path = match sig_type {
