@@ -82,9 +82,7 @@ impl Resolver {
         let client = PkarrClient::builder()
             .dht_settings(DhtSettings {
                 bootstrap,
-                request_timeout: None,
-                server: None,
-                port: None,
+                ..DhtSettings::default()
             })
             .build()?;
 
@@ -161,9 +159,7 @@ impl Resolver {
         let client = PkarrClient::builder()
             .dht_settings(DhtSettings {
                 bootstrap,
-                request_timeout: None,
-                server: None,
-                port: None,
+                ..DhtSettings::default()
             })
             .build()?;
 
