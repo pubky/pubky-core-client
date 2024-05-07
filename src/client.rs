@@ -284,7 +284,40 @@ impl Client {
             .unwrap())
     }
 
-    /// gets current session
+    /// Gets `session` string currently associated with `user_id`
+    ///
+    /// # Parameters
+    /// * `user_id` - User's identity
+    ///
+    /// # Returns
+    /// * `Result<String, Error>` - Session string
+    ///
+    /// # Errors
+    /// * `Error::UserNotSignedUp` - If user is not signed up
+    ///
+    /// # Example
+    /// ```
+    /// use pubky_core_client::client::Client;
+    /// use pubky_core_client::utils::generate_seed;
+    /// use url::Url;
+    /// # use mainline::dht::Testnet;
+    ///
+    /// let bootstrap: Option<Vec<String>> = None;
+    /// let homeserver_url: Option<Url> = None;
+    /// # let testnet = Testnet::new(10);
+    /// # let bootstrap = Some(testnet.bootstrap);
+    ///
+    /// // Client needs to be mutable to perform signup as it will update the cache with user's identity
+    /// let mut client = Client::new(None);
+    /// let seed = generate_seed();
+    ///
+    /// match client.login(seed, homeserver_url) {
+    ///      Ok(user_id) => {
+    ///           client.get_current_session(&user_id);
+    ///      },
+    ///      Err(e) => println!("{e:?}")
+    /// };
+    /// ```
     pub fn get_current_session(&self, user_id: &str) -> Result<String, Error> {
         Ok(self
             .homeservers_cache
@@ -295,6 +328,7 @@ impl Client {
             .unwrap())
     }
 
+    /// Helper method to get mutable reference to the `session` string currently associated with `user_id`
     fn get_mut_session(&mut self, user_id: &str) -> Result<&mut Option<String>, Error> {
         Ok(&mut self
             .homeservers_cache
