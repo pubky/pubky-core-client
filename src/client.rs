@@ -13,7 +13,7 @@ use crate::transport::{
 ///
 /// Client accepts optional list of bootstraping DHT nodes to resolve user's `homeserver_url`.
 ///
-/// It encapsulates an instance of `Auth` object to publish user's identity to the network, to lookup other user's homeservers which acts as a cache that matches `userId` to `homeserver_url` and corresponding `sesison_id`.
+/// It encapsulates an instance of `Auth` object to publish user's identity to the network, to lookup other user's homeservers which acts as a cache that matches `user_id` to `homeserver_url` and corresponding `sesison_id`.
 ///
 /// The CRUD operations for homeserver are performed using http requests.
 pub struct Client {
