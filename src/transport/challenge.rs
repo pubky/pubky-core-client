@@ -20,6 +20,8 @@ impl Challenge {
         }
     }
 
+    // Will either be removed or used after update of auth
+    #[allow(dead_code)]
     pub fn create(expires_at: u64, challenge: Option<[u8; 32]>) -> Self {
         // Lazily generate a challenge if none is provided
         let challenge = challenge.unwrap_or_else(|| {
@@ -32,6 +34,8 @@ impl Challenge {
         Self::new(challenge, expires_at, signable)
     }
 
+    // Will either be removed or used after update of auth
+    #[allow(dead_code)]
     pub fn serialize(&self) -> Vec<u8> {
         let mut bytes = Vec::with_capacity(40);
         bytes.extend_from_slice(&self.value);
@@ -51,6 +55,8 @@ impl Challenge {
         Self::new(value, expires_at, Self::signable(&value))
     }
 
+    // Will either be removed or used after update of auth
+    #[allow(dead_code)]
     pub fn expired(&self) -> bool {
         self.expires_at <= now()
     }
@@ -59,6 +65,8 @@ impl Challenge {
         crypto::blake3::derive_key(CONTEXT, challenge)
     }
 
+    // Will either be removed or used after update of auth
+    #[allow(dead_code)]
     pub fn verify(
         &self,
         signature: &crypto::Signature,
