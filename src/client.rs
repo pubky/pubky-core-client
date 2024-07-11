@@ -2,108 +2,237 @@ use crate::error::ClientError as Error;
 
 use std::collections::HashMap;
 
+use crate::helpers::Path;
 use crate::transport::{
     auth::Auth,
-    crypto,
     http::{request, HeaderMap, Method, Url},
     resolver::Resolver,
 };
 
-/// This is the pubky client class. It is used for accessing pubky infrastructure for CRUD options
-/// over user's data in pubky network.
+/// This is the pubky client class. It is used for accessing pubky infrastructure for CRUD options over user's data in pubky network.
 ///
-/// Client accepts optional seed for pubky key generation.
-/// It accepts optional homeserver URL and relay URL.
+/// Client accepts optional list of bootstraping DHT nodes to resolve user's `homeserver_url`.
 ///
-/// It has as a cache which matches {userId:(homeserver_url, sesison_id)}.
-///
-/// It has encapsulates an instance of a resolver to publish user's identity to the network, as
-/// well as to lookup other user's homeservers
-///
+/// It encapsulates an instance of `Auth` object to publish user's identity to the network, to lookup other user's homeservers which acts as a cache that matches `user_id` to `homeserver_url` and corresponding `sesison_id`.
 ///
 /// The CRUD operations for homeserver are performed using http requests.
-
-pub struct Client<'a> {
-    pub homeserver_url: Url, // own homeserver
-    pub user_id: String,     // own user id
-    seed: [u8; 32],
-    homeservers_cache: HashMap<String, Auth<'a>>, // homervers of others
-    dht_relay: Option<&'a Url>,
+pub struct Client {
+    homeservers_cache: HashMap<String, Auth>,
+    bootstrap: Option<Vec<String>>,
 }
 
-impl Client<'_> {
-    pub fn new<'a>(
-        seed: Option<[u8; 32]>,
-        homeserver_url: Option<Url>,
-        dht_relay: Option<&'a Url>,
-        bootstrap: Option<&'a Vec<String>>,
-    ) -> Client<'a> {
-        let seed = seed.unwrap_or(crypto::random_bytes(32).try_into().unwrap());
-
-        let resolver = Resolver::new(dht_relay, bootstrap);
-        let mut auth = Auth::new(resolver, homeserver_url);
-
-        let user_id = auth.signup(&seed, None).unwrap();
-        let homeserver_url = auth.homeserver_url.clone().unwrap();
-
-        let mut homeservers_cache = HashMap::new();
-        homeservers_cache.insert(user_id.clone(), auth);
-
+impl Client {
+    /// Create a new instance of Client
+    ///
+    /// # Parameters
+    /// * `bootstrap` - Optional pointer to the list of bootstraping DHT nodes to resolve user's homeserver url.
+    ///
+    /// # Returns
+    /// * `Client` - New instance of `Client`
+    ///
+    /// # Example
+    /// ```
+    /// use pubky_core_client::client::Client;
+    /// # use mainline::dht::Testnet;
+    ///
+    /// let bootstrap: Option<Vec<String>> = None;
+    /// # let testnet = Testnet::new(10);
+    /// # let bootstrap = Some(testnet.bootstrap);
+    ///
+    /// let client = Client::new(bootstrap);
+    /// ```
+    pub fn new(bootstrap: Option<Vec<String>>) -> Client {
         Client {
-            seed,
-            homeservers_cache,
-            homeserver_url,
-            user_id,
-            dht_relay,
+            homeservers_cache: HashMap::new(),
+            bootstrap,
         }
-    }
-
-    /* GENERAL LOGIC */
-
-    /// Generate a new key pair
-    pub fn generate_keypair(&self) -> crypto::Keypair {
-        crypto::DeterministicKeyGen::generate(Some(&self.seed))
-    }
-
-    /// Get user id
-    pub fn get_user_id(&self) -> String {
-        let keypair = self.generate_keypair();
-        keypair.to_z32()
     }
 
     /* "AUTH" RELATED LOGIC */
-    /// login
-    pub fn login(&mut self) -> Result<String, Error> {
-        match self
-            .homeservers_cache
-            .get_mut(&self.user_id)
-            .unwrap()
-            .login(&self.seed, self.dht_relay)
-        {
-            Ok(session_id) => Ok(session_id),
-            Err(e) => Err(Error::FailedToLogin(e)),
+
+    /// Signup to the homeserver using seed either with or without homeserver url. In case if `homeserver_url` is not provided it will be resolved from the `seed`'s public key. URL will be republished to DHT using [Pkarr](https://github.com/Nuhvi/pkarr/)
+    ///
+    /// # Parameters
+    /// * `seed` - 32 bytes seed to generate user's identity
+    /// * `homeserver_url` - Optional URL of the homeserver_url
+    ///
+    /// # Returns
+    /// * `Result<String, Error>` - User's identity
+    ///
+    /// # Errors
+    /// * `Error::FailedToSignup` - If signup fails
+    ///
+    /// # Example
+    /// ```
+    /// use pubky_core_client::client::Client;
+    /// use pubky_core_client::utils::generate_seed;
+    /// use url::Url;
+    /// # use mainline::dht::Testnet;
+    ///
+    /// let bootstrap: Option<Vec<String>> = None;
+    /// let homeserver_url: Option<Url> = None;
+    /// # let testnet = Testnet::new(10);
+    /// # let bootstrap = Some(testnet.bootstrap);
+    ///
+    /// // Client needs to be mutable to perform signup as it will update the cache with user's identity
+    /// let mut client = Client::new(None);
+    /// let seed = generate_seed();
+    ///
+    /// match client.signup(seed, homeserver_url) {
+    ///      Ok(user_id) => println!("{user_id}"),
+    ///      Err(e) => println!("{e:?}")
+    /// }
+    /// ```
+    pub fn signup(&mut self, seed: [u8; 32], homeserver_url: Option<Url>) -> Result<String, Error> {
+        let resolver = Resolver::new(self.bootstrap.clone());
+        let mut auth = Auth::new(resolver, homeserver_url);
+
+        match auth.signup(&seed) {
+            Ok(user_id) => {
+                let _ = &self.homeservers_cache.insert(user_id.clone(), auth);
+                Ok(user_id)
+            }
+            Err(e) => return Err(Error::FailedToSignup(e)),
         }
     }
 
-    /// logout
-    pub fn logout(&mut self) -> Result<String, Error> {
+    /// Login to the homeserver using `seed` either with or without `homeserver_url`. In case if homeserver url is not provided it will be resolved from the seed's public key. URL will be republished to DHT using [Pkarr](http://github.com/Nhubei/pkarr/)
+    ///
+    /// # Parameters
+    /// * `seed` - 32 bytes seed to generate user's identity
+    /// * `homeserver_url` - Optional URL of the homeserver_url
+    ///
+    /// # Returns
+    /// * `Result<String, Error>` - User's identity
+    ///
+    /// # Errors
+    /// * `Error::FailedToLogin` - If login fails
+    ///
+    /// # Example
+    /// ```
+    /// use pubky_core_client::client::Client;
+    /// use pubky_core_client::utils::generate_seed;
+    /// use url::Url;
+    /// # use mainline::dht::Testnet;
+    ///
+    /// let bootstrap: Option<Vec<String>> = None;
+    /// let homeserver_url: Option<Url> = None;
+    /// # let testnet = Testnet::new(10);
+    /// # let bootstrap = Some(testnet.bootstrap);
+    ///
+    /// // Client needs to be mutable to perform signup as it will update the cache with user's identity
+    /// let mut client = Client::new(None);
+    /// let seed = generate_seed();
+    ///
+    /// match client.login(seed, homeserver_url) {
+    ///      Ok(user_id) => println!("{user_id}"),
+    ///      Err(e) => println!("{e:?}")
+    /// }
+    /// ```
+    pub fn login(&mut self, seed: [u8; 32], homeserver_url: Option<Url>) -> Result<String, Error> {
+        let resolver = Resolver::new(self.bootstrap.clone());
+        let mut auth = Auth::new(resolver, homeserver_url);
+
+        match auth.login(&seed) {
+            Ok(user_id) => {
+                let _ = &self.homeservers_cache.insert(user_id.clone(), auth);
+                Ok(user_id)
+            }
+            Err(e) => return Err(Error::FailedToLogin(e)),
+        }
+    }
+
+    /// Logout from the homeserver associated with the `user_id`. It will remove the `user_id` from the internal cache. If the `user_id` is not found in the cache it will return an error. If the logout fails it will return an error.
+    ///
+    /// # Parameters
+    /// * `user_id` - User's identity
+    ///
+    /// # Returns
+    /// * `Result<String, Error>` - Session ID which was associated with used
+    ///
+    /// # Errors
+    /// * `Error::UserNotSignedUp` - If user is not signed up
+    /// * `Error::FailedToLogout` - If logout fails
+    ///
+    /// # Example
+    /// ```
+    /// use pubky_core_client::client::Client;
+    /// use pubky_core_client::utils::generate_seed;
+    /// use url::Url;
+    /// # use mainline::dht::Testnet;
+    ///
+    /// let bootstrap: Option<Vec<String>> = None;
+    /// let homeserver_url: Option<Url> = None;
+    /// # let testnet = Testnet::new(10);
+    /// # let bootstrap = Some(testnet.bootstrap);
+    ///
+    /// // Client needs to be mutable to perform signup as it will update the cache with user's identity
+    /// let mut client = Client::new(None);
+    /// let seed = generate_seed();
+    ///
+    /// match client.login(seed, homeserver_url) {
+    ///      Ok(user_id) => {
+    ///           client.logout(&user_id);
+    ///      },
+    ///      Err(e) => println!("{e:?}")
+    /// };
+    /// ```
+    pub fn logout(&mut self, user_id: &str) -> Result<String, Error> {
         match self
             .homeservers_cache
-            .get_mut(&self.user_id)
-            .unwrap()
-            .logout(&self.user_id)
+            .get_mut(user_id)
+            .ok_or(Error::UserNotSignedUp)?
+            .logout(user_id)
         {
-            Ok(session_id) => Ok(session_id),
+            Ok(session_id) => {
+                let _ = self.homeservers_cache.remove(user_id);
+                Ok(session_id)
+            }
             Err(e) => Err(Error::FailedToLogout(e)),
         }
     }
 
-    /// session
-    pub fn session(&mut self) -> Result<String, Error> {
+    /// Requst session from the homeserver associated with the `user_id`. If the `user_id` is not found in the cache it will return an error. If the session retrieval fails it will return an error.
+    ///
+    /// # Parameters
+    /// * `user_id` - User's identity
+    ///
+    /// # Returns
+    /// // FIXME: it should be a session object
+    /// * `Result<String, Error>` - Session string which was associated with user
+    ///
+    /// # Errors
+    /// * `Error::UserNotSignedUp` - If user is not signed up
+    /// * `Error::FailedToRetrieveSession` - If session retrieval fails
+    ///
+    /// # Example
+    /// ```
+    /// use pubky_core_client::client::Client;
+    /// use pubky_core_client::utils::generate_seed;
+    /// use url::Url;
+    /// # use mainline::dht::Testnet;
+    ///
+    /// let bootstrap: Option<Vec<String>> = None;
+    /// let homeserver_url: Option<Url> = None;
+    /// # let testnet = Testnet::new(10);
+    /// # let bootstrap = Some(testnet.bootstrap);
+    ///
+    /// // Client needs to be mutable to perform signup as it will update the cache with user's identity
+    /// let mut client = Client::new(None);
+    /// let seed = generate_seed();
+    ///
+    /// match client.login(seed, homeserver_url) {
+    ///      Ok(user_id) => {
+    ///           client.session(&user_id);
+    ///      },
+    ///      Err(e) => println!("{e:?}")
+    /// };
+    /// ```
+    pub fn session(&mut self, user_id: &str) -> Result<String, Error> {
         match self
             .homeservers_cache
-            .get_mut(&self.user_id)
-            .unwrap()
+            .get_mut(user_id)
+            .ok_or(Error::UserNotSignedUp)?
             .session()
         {
             Ok(session) => Ok(session),
@@ -111,24 +240,166 @@ impl Client<'_> {
         }
     }
 
-    /* "REPOS" RELATED LOGIC */
-
-    /// Create repository for user
-    pub fn create(&mut self, user_id: &str, repo_name: &str) -> Result<(), Error> {
-        let url = &self
+    /// Geet `homeserver_url` currently associated with `user_id`
+    ///
+    /// # Parameters
+    /// * `user_id` - User's identity
+    ///
+    /// # Returns
+    /// * `Result<Url, Error>` - URL of the `homeserver_url`
+    ///
+    /// # Errors
+    /// * `Error::UserNotSignedUp` - If user is not signed up
+    ///
+    /// # Example
+    /// ```
+    /// use pubky_core_client::client::Client;
+    /// use pubky_core_client::utils::generate_seed;
+    /// use url::Url;
+    /// # use mainline::dht::Testnet;
+    ///
+    /// let bootstrap: Option<Vec<String>> = None;
+    /// let homeserver_url: Option<Url> = None;
+    /// # let testnet = Testnet::new(10);
+    /// # let bootstrap = Some(testnet.bootstrap);
+    ///
+    /// // Client needs to be mutable to perform signup as it will update the cache with user's identity
+    /// let mut client = Client::new(None);
+    /// let seed = generate_seed();
+    ///
+    /// match client.login(seed, homeserver_url) {
+    ///      Ok(user_id) => {
+    ///           client.get_home_server_url(&user_id);
+    ///      },
+    ///      Err(e) => println!("{e:?}")
+    /// };
+    /// ```
+    pub fn get_home_server_url(&self, user_id: &str) -> Result<Url, Error> {
+        Ok(self
             .homeservers_cache
             .get(user_id)
-            .unwrap()
+            .ok_or(Error::UserNotSignedUp)?
             .homeserver_url
             .clone()
-            .unwrap()
-            .join(&format!("/mvp/users/{}/repos/{}", user_id, repo_name))
-            .unwrap();
+            .unwrap())
+    }
+
+    /// Gets `session` string currently associated with `user_id`
+    ///
+    /// # Parameters
+    /// * `user_id` - User's identity
+    ///
+    /// # Returns
+    /// * `Result<String, Error>` - Session string
+    ///
+    /// # Errors
+    /// * `Error::UserNotSignedUp` - If user is not signed up
+    ///
+    /// # Example
+    /// ```
+    /// use pubky_core_client::client::Client;
+    /// use pubky_core_client::utils::generate_seed;
+    /// use url::Url;
+    /// # use mainline::dht::Testnet;
+    ///
+    /// let bootstrap: Option<Vec<String>> = None;
+    /// let homeserver_url: Option<Url> = None;
+    /// # let testnet = Testnet::new(10);
+    /// # let bootstrap = Some(testnet.bootstrap);
+    ///
+    /// // Client needs to be mutable to perform signup as it will update the cache with user's identity
+    /// let mut client = Client::new(None);
+    /// let seed = generate_seed();
+    ///
+    /// match client.login(seed, homeserver_url) {
+    ///      Ok(user_id) => {
+    ///           client.get_current_session(&user_id);
+    ///      },
+    ///      Err(e) => println!("{e:?}")
+    /// };
+    /// ```
+    pub fn get_current_session(&self, user_id: &str) -> Result<String, Error> {
+        Ok(self
+            .homeservers_cache
+            .get(user_id)
+            .ok_or(Error::UserNotSignedUp)?
+            .session_id
+            .clone()
+            .unwrap())
+    }
+
+    /// Helper method to get mutable reference to the `session` string currently associated with `user_id`
+    fn get_mut_session(&mut self, user_id: &str) -> Result<&mut Option<String>, Error> {
+        Ok(&mut self
+            .homeservers_cache
+            .get_mut(user_id)
+            .ok_or(Error::UserNotSignedUp)?
+            .session_id)
+    }
+
+    /// Helper method to get URL path for the given `user_id`, `repo_name` and `path`
+    fn get_url_path(
+        &self,
+        user_id: &str,
+        repo_name: &str,
+        path: Option<&str>,
+    ) -> Result<Url, Error> {
+        let url = &self.get_home_server_url(user_id)?;
+        let path = Path::get_repo_string(user_id, repo_name, path)?;
+
+        match url.join(&path) {
+            Ok(url) => Ok(url),
+            Err(_) => Err(Error::InvalidInputForUrl),
+        }
+    }
+
+    /* "REPOS" RELATED LOGIC */
+
+    /// Create repository as a user on the homeserver. It will return an error if the repository creation fails.
+    ///
+    /// # Parameters
+    /// * `user_id` - User's identity
+    /// * `repo_name` - Name of the repository
+    ///
+    /// # Returns
+    /// * `Result<(), Error>` - Empty Result
+    ///
+    /// # Errors
+    /// * `Error::FailedToCreateRepository` - If repository creation fails
+    /// * `Error::UserNotSignedUp` - If user is not signed up
+    /// * `Error::InvalidInputForUrl` - If input parameters can not be converted to a valid URL
+    ///
+    /// # Example
+    /// ```
+    /// use pubky_core_client::client::Client;
+    /// use pubky_core_client::utils::generate_seed;
+    /// use url::Url;
+    /// # use mainline::dht::Testnet;
+    ///
+    /// let bootstrap: Option<Vec<String>> = None;
+    /// let homeserver_url: Option<Url> = None;
+    /// # let testnet = Testnet::new(10);
+    /// # let bootstrap = Some(testnet.bootstrap);
+    ///
+    /// // Client needs to be mutable to perform signup as it will update the cache with user's identity
+    /// let mut client = Client::new(None);
+    /// let seed = generate_seed();
+    ///
+    /// let repo_name = "test_repo";
+    /// match client.login(seed, homeserver_url) {
+    ///      Ok(user_id) => {
+    ///           client.create(&user_id, repo_name);
+    ///      },
+    ///      Err(e) => println!("{e:?}")
+    /// };
+    /// ```
+    pub fn create(&mut self, user_id: &str, repo_name: &str) -> Result<(), Error> {
+        let url = &self.get_url_path(user_id, repo_name, None)?;
 
         match request(
             Method::PUT,
             url.clone(),
-            &mut self.homeservers_cache.get_mut(user_id).unwrap().session_id,
+            self.get_mut_session(user_id)?,
             None,
             None,
         ) {
@@ -137,7 +408,48 @@ impl Client<'_> {
         }
     }
 
-    /// Put data into user's repository and return URL to this repo
+    /// Put data under given path into user's repository and return URL to this data.
+    ///
+    /// # Parameters
+    /// * `user_id` - User's identity
+    /// * `repo_name` - Name of the repository
+    /// * `path` - Path to the data
+    /// * `payload` - Data to be stored
+    ///
+    /// # Returns
+    /// * `Result<Url, Error>` - URL of the data
+    ///
+    /// # Errors
+    /// * `Error::FailedToStoreData` - If storing data fails
+    /// * `Error::UserNotSignedUp` - If user is not signed up
+    /// * `Error::InvalidInputForUrl` - If input parameters can not be converted to a valid URL
+    ///
+    /// # Example
+    /// ```
+    /// use pubky_core_client::client::Client;
+    /// use pubky_core_client::utils::generate_seed;
+    /// use url::Url;
+    /// # use mainline::dht::Testnet;
+    ///
+    /// let bootstrap: Option<Vec<String>> = None;
+    /// let homeserver_url: Option<Url> = None;
+    /// # let testnet = Testnet::new(10);
+    /// # let bootstrap = Some(testnet.bootstrap);
+    ///
+    /// // Client needs to be mutable to perform signup as it will update the cache with user's identity
+    /// let mut client = Client::new(None);
+    /// let seed = generate_seed();
+    ///
+    /// let repo_name = "test_repo";
+    /// let path = "test_path";
+    /// let payload = "{ \"data\": \"test_data\" }}";
+    /// match client.login(seed, homeserver_url) {
+    ///      Ok(user_id) => {
+    ///           client.put(&user_id, repo_name, path, payload);
+    ///      },
+    ///      Err(e) => println!("{e:?}")
+    /// };
+    /// ```
     pub fn put(
         &mut self,
         user_id: &str,
@@ -145,20 +457,7 @@ impl Client<'_> {
         path: &str,
         payload: &str,
     ) -> Result<Url, Error> {
-        let url = &self
-            .homeservers_cache
-            .get(user_id)
-            .unwrap()
-            .homeserver_url
-            .clone()
-            .unwrap()
-            .join(&format!(
-                "/mvp/users/{}/repos/{}/{}",
-                user_id, repo_name, path
-            ))
-            .unwrap();
-
-        println!("Calling: {}", url);
+        let url = &self.get_url_path(user_id, repo_name, Some(path))?;
 
         let mut headers = HeaderMap::new();
         headers.insert(
@@ -170,73 +469,125 @@ impl Client<'_> {
             payload.len().to_string().try_into().unwrap(),
         );
 
-        let response = request(
+        match request(
             Method::PUT,
             url.clone(),
-            &mut self.homeservers_cache.get_mut(user_id).unwrap().session_id,
+            self.get_mut_session(user_id)?,
             Some(&headers),
             Some(payload.to_string()),
-        );
-
-        match response {
+        ) {
             Ok(_) => Ok(url.clone()),
             Err(e) => Err(Error::FailedToStoreData(e)),
         }
     }
 
-    /// Get data from user's repository and return it as a JSON(?)
+    /// Get data from user's repository and return it as a string.
+    ///
+    /// # Parameters
+    /// * `user_id` - User's identity
+    /// * `repo_name` - Name of the repository
+    /// * `path` - Path to the data
+    ///
+    /// # Returns
+    /// * `Result<String, Error>` - Data as a string
+    ///
+    /// # Errors
+    /// * `Error::FailedToRetrieveData` - If retrieving data fails
+    /// * `Error::UserNotSignedUp` - If user is not signed up
+    /// * `Error::InvalidInputForUrl` - If input parameters can not be converted to a valid URL
+    ///
+    /// # Example
+    /// ```
+    /// use pubky_core_client::client::Client;
+    /// use pubky_core_client::utils::generate_seed;
+    /// use url::Url;
+    /// # use mainline::dht::Testnet;
+    ///
+    /// let bootstrap: Option<Vec<String>> = None;
+    /// let homeserver_url: Option<Url> = None;
+    /// # let testnet = Testnet::new(10);
+    /// # let bootstrap = Some(testnet.bootstrap);
+    ///
+    /// // Client needs to be mutable to perform signup as it will update the cache with user's identity
+    /// let mut client = Client::new(None);
+    /// let seed = generate_seed();
+    ///
+    /// let repo_name = "test_repo";
+    /// let path = "test_path";
+    /// let payload = "{ \"data\": \"test_data\" }}";
+    /// match client.login(seed, homeserver_url) {
+    ///      Ok(user_id) => {
+    ///           client.get(&user_id, repo_name, path);
+    ///      },
+    ///      Err(e) => println!("{e:?}")
+    /// };
+    /// ```
     pub fn get(&mut self, user_id: &str, repo_name: &str, path: &str) -> Result<String, Error> {
-        let url = &self
-            .homeservers_cache
-            .get(user_id)
-            .unwrap()
-            .homeserver_url
-            .clone()
-            .unwrap()
-            .join(&format!(
-                "/mvp/users/{}/repos/{}/{}",
-                user_id, repo_name, path
-            ))
-            .unwrap();
+        let url = &self.get_url_path(user_id, repo_name, Some(path))?;
 
-        let response = request(
+        match request(
             Method::GET,
             url.clone(),
-            &mut self.homeservers_cache.get_mut(user_id).unwrap().session_id,
+            self.get_mut_session(user_id)?,
             None,
             None,
-        );
-
-        match response {
+        ) {
             Ok(body) => Ok(body),
             Err(e) => Err(Error::FailedToRetrieveData(e)),
         }
     }
 
-    /// Delete data from user's repository
+    /// Delete data under given path from user's repository
+    ///
+    /// # Parameters
+    /// * `user_id` - User's identity
+    /// * `repo_name` - Name of the repository
+    /// * `path` - Path to the data
+    ///
+    /// # Returns
+    /// * `Result<(), Error>` - Empty Result
+    ///
+    /// # Errors
+    /// * `Error::FailedToDeleteData` - If deleting data fails
+    /// * `Error::UserNotSignedUp` - If user is not signed up
+    /// * `Error::InvalidInputForUrl` - If input parameters can not be converted to a valid URL
+    ///
+    /// # Example
+    /// ```
+    /// use pubky_core_client::client::Client;
+    /// use pubky_core_client::utils::generate_seed;
+    /// use url::Url;
+    /// # use mainline::dht::Testnet;
+    ///
+    /// let bootstrap: Option<Vec<String>> = None;
+    /// let homeserver_url: Option<Url> = None;
+    /// # let testnet = Testnet::new(10);
+    /// # let bootstrap = Some(testnet.bootstrap);
+    ///
+    /// // Client needs to be mutable to perform signup as it will update the cache with user's identity
+    /// let mut client = Client::new(None);
+    /// let seed = generate_seed();
+    ///
+    /// let repo_name = "test_repo";
+    /// let path = "test_path";
+    /// let payload = "{ \"data\": \"test_data\" }}";
+    /// match client.login(seed, homeserver_url) {
+    ///      Ok(user_id) => {
+    ///           client.delete(&user_id, repo_name, path);
+    ///      },
+    ///      Err(e) => println!("{e:?}")
+    /// };
+    /// ```
     pub fn delete(&mut self, user_id: &str, repo_name: &str, path: &str) -> Result<(), Error> {
-        let url = &self
-            .homeservers_cache
-            .get(user_id)
-            .unwrap()
-            .homeserver_url
-            .clone()
-            .unwrap()
-            .join(&format!(
-                "/mvp/users/{}/repos/{}/{}",
-                user_id, repo_name, path
-            ))
-            .unwrap();
+        let url = &self.get_url_path(user_id, repo_name, Some(path))?;
 
-        let response = request(
+        match request(
             Method::DELETE,
             url.clone(),
-            &mut self.homeservers_cache.get_mut(user_id).unwrap().session_id,
+            self.get_mut_session(user_id)?,
             None,
             None,
-        );
-
-        match response {
+        ) {
             Ok(_) => Ok(()),
             Err(e) => Err(Error::FailedToDeleteData(e)),
         }
@@ -270,221 +621,328 @@ impl Client<'_> {
 mod tests {
     use super::*;
     use crate::test_utils::*;
-    use crate::transport::crypto::{DeterministicKeyGen, Keypair};
+    use crate::utils::{generate_keypair, generate_seed, get_user_id};
     use mainline::dht::Testnet;
 
     #[test]
     fn test_client_new() {
         let testnet = Testnet::new(10);
-        let seed = b"it is a seed for key generation!";
+        let seed = generate_seed();
 
-        let key_pair: Keypair = DeterministicKeyGen::generate(Some(seed));
-        let user_id = key_pair.to_z32();
-        let server = create_homeserver_mock(
+        let user_id = get_user_id(Some(&seed));
+        let (mut server, _homeserver_url) = create_homeserver_mock(
             user_id.to_string(),
             "repo_name".to_string(),
             "folder_path".to_string(),
             "data".to_string(),
         );
-        let _ = publish_url(
-            &key_pair,
-            &Url::parse(&server.url()).unwrap(),
-            &testnet.bootstrap,
+
+        let client = Client::new(Some(testnet.bootstrap));
+
+        assert_eq!(client.homeservers_cache.len(), 0);
+
+        server.reset();
+    }
+
+    #[test]
+    fn test_client_signup_with_seed() {
+        let testnet = Testnet::new(10);
+        let seed = generate_seed();
+
+        let key_pair = generate_keypair(Some(&seed));
+        let user_id = get_user_id(Some(&seed));
+        let (mut server, homeserver_url) = create_homeserver_mock(
+            user_id.to_string(),
+            "repo_name".to_string(),
+            "folder_path".to_string(),
+            "data".to_string(),
+        );
+        // since homeserver_url is not to be provided it will be resolved from the the seed
+        // thus needs to be published beforehand
+        let publish_net = testnet.bootstrap.clone();
+        let _ = publish_url(&key_pair, &homeserver_url, publish_net);
+
+        let mut client = Client::new(Some(testnet.bootstrap));
+
+        assert_eq!(client.homeservers_cache.len(), 0);
+
+        let got_user_id = client.signup(seed, None).unwrap();
+
+        assert_eq!(got_user_id, user_id);
+        assert_eq!(client.homeservers_cache.len(), 1);
+        assert_eq!(
+            client.get_home_server_url(&user_id).unwrap(),
+            homeserver_url
+        );
+        assert_eq!(
+            client.get_current_session(&user_id).unwrap(),
+            "send_signature_signup".to_string()
         );
 
-        let client = Client::new(Some(*seed), None, None, Some(&testnet.bootstrap));
+        server.reset();
+    }
+
+    #[test]
+    fn test_client_signup_with_seed_url() {
+        let testnet = Testnet::new(10);
+        let seed = generate_seed();
+
+        let user_id = get_user_id(Some(&seed));
+        let (mut server, homeserver_url) = create_homeserver_mock(
+            user_id.to_string(),
+            "repo_name".to_string(),
+            "folder_path".to_string(),
+            "data".to_string(),
+        );
+
+        let mut client = Client::new(Some(testnet.bootstrap));
+
+        assert_eq!(client.homeservers_cache.len(), 0);
+
+        client.signup(seed, Some(homeserver_url.clone())).unwrap();
 
         assert_eq!(client.homeservers_cache.len(), 1);
         assert_eq!(
-            client
-                .homeservers_cache
-                .get(&user_id)
-                .unwrap()
-                .homeserver_url,
-            Some(Url::parse(&server.url()).unwrap())
+            client.get_home_server_url(&user_id).unwrap(),
+            homeserver_url
         );
         assert_eq!(
-            client.homeservers_cache.get(&user_id).unwrap().session_id,
-            Some("send_signature_signup".to_string())
+            client.get_current_session(&user_id).unwrap(),
+            "send_signature_signup".to_string()
+        );
+
+        server.reset();
+    }
+
+    #[test]
+    fn test_client_signup_with_seed_to_non_existing_server() {
+        use crate::error::*;
+
+        let testnet = Testnet::new(10);
+        let seed = generate_seed();
+
+        let user_id = get_user_id(Some(&seed));
+        let mut client = Client::new(Some(testnet.bootstrap));
+
+        assert_eq!(client.homeservers_cache.len(), 0);
+
+        let res = client.signup(seed, None);
+
+        assert_eq!(client.homeservers_cache.len(), 0);
+        assert_eq!(
+            res.unwrap_err(),
+            ClientError::FailedToSignup(AuthError::FailedToResolveHomeserver(
+                DHTError::EntryNotFound(user_id)
+            ))
         );
     }
 
     #[test]
+    fn test_client_login_with_seed() {
+        let testnet = Testnet::new(10);
+        let seed = generate_seed();
+
+        let key_pair = generate_keypair(Some(&seed));
+        let user_id = get_user_id(Some(&seed));
+        let (mut server, homeserver_url) = create_homeserver_mock(
+            user_id.to_string(),
+            "repo_name".to_string(),
+            "folder_path".to_string(),
+            "data".to_string(),
+        );
+        // since homeserver_url is not to be provided it will be resolved from the the seed
+        // thus needs to be published beforehand
+        let publish_net = testnet.bootstrap.clone();
+        let _ = publish_url(&key_pair, &homeserver_url, publish_net);
+
+        let mut client = Client::new(Some(testnet.bootstrap));
+
+        assert_eq!(client.homeservers_cache.len(), 0);
+
+        client.login(seed, None).unwrap();
+
+        assert_eq!(
+            client.get_home_server_url(&user_id).unwrap(),
+            homeserver_url
+        );
+        assert_eq!(
+            client.get_current_session(&user_id).unwrap(),
+            "send_signature_login".to_string()
+        );
+
+        server.reset();
+    }
+
+    #[test]
+    fn test_client_login_with_seed_url() {
+        let testnet = Testnet::new(10);
+        let seed = generate_seed();
+
+        let user_id = get_user_id(Some(&seed));
+        let (mut server, homeserver_url) = create_homeserver_mock(
+            user_id.to_string(),
+            "repo_name".to_string(),
+            "folder_path".to_string(),
+            "data".to_string(),
+        );
+        let mut client = Client::new(Some(testnet.bootstrap));
+
+        assert_eq!(client.homeservers_cache.len(), 0);
+
+        client.login(seed, Some(homeserver_url.clone())).unwrap();
+
+        assert_eq!(client.homeservers_cache.len(), 1);
+        assert_eq!(
+            client.get_home_server_url(&user_id).unwrap(),
+            homeserver_url
+        );
+        assert_eq!(
+            client.get_current_session(&user_id).unwrap(),
+            "send_signature_login".to_string()
+        );
+
+        server.reset();
+    }
+
+    #[test]
     fn test_client_create() {
-        let seed = b"it is a seed for key generation!";
+        let seed = generate_seed();
         let testnet = Testnet::new(10);
 
-        let key_pair: Keypair = DeterministicKeyGen::generate(Some(seed));
-        let user_id = key_pair.to_z32();
+        let user_id = get_user_id(Some(&seed));
         let repo_name = "test_repo";
 
-        let server = create_homeserver_mock(
+        let (mut server, homeserver_url) = create_homeserver_mock(
             user_id.to_string(),
             repo_name.to_string(),
             "folder_path".to_string(),
             "data".to_string(),
         );
-        let _ = publish_url(
-            &key_pair,
-            &Url::parse(&server.url()).unwrap(),
-            &testnet.bootstrap,
-        );
-        let mut client = Client::new(Some(*seed), None, None, Some(&testnet.bootstrap));
+        let mut client = Client::new(Some(testnet.bootstrap));
+        let user_id = client.login(seed, Some(homeserver_url.clone())).unwrap();
 
         let result = client.create(&user_id, repo_name);
 
-        assert_eq!(result.unwrap(), ());
+        assert!(result.is_ok());
         assert_eq!(client.homeservers_cache.len(), 1);
         assert_eq!(
-            client
-                .homeservers_cache
-                .get(&user_id)
-                .unwrap()
-                .homeserver_url,
-            Some(Url::parse(&server.url()).unwrap())
+            client.get_home_server_url(&user_id).unwrap(),
+            homeserver_url
         );
         assert_eq!(
-            client.homeservers_cache.get(&user_id).unwrap().session_id,
-            Some("create_repo".to_string())
+            client.get_current_session(&user_id).unwrap(),
+            "create_repo".to_string()
         );
+
+        server.reset();
     }
 
     #[test]
     fn test_client_put() {
         let testnet = Testnet::new(10);
-        let seed = b"it is a seed for key generation!";
+        let seed = generate_seed();
 
-        let key_pair: Keypair = DeterministicKeyGen::generate(Some(seed));
-        let user_id = key_pair.to_z32();
+        let user_id = get_user_id(Some(&seed));
 
         let repo_name = "test_repo";
         let folder_path = "test_path";
-        let server = create_homeserver_mock(
+        let (mut server, homeserver_url) = create_homeserver_mock(
             user_id.to_string(),
             repo_name.to_string(),
             folder_path.to_string(),
             "test_payload".to_string(),
         );
-
-        let _ = publish_url(
-            &key_pair,
-            &Url::parse(&server.url()).unwrap(),
-            &testnet.bootstrap,
-        );
-
-        let mut client = Client::new(Some(*seed), None, None, Some(&testnet.bootstrap));
+        let mut client = Client::new(Some(testnet.bootstrap));
+        let user_id = client.login(seed, Some(homeserver_url.clone())).unwrap();
 
         let result = client.put(&user_id, repo_name, folder_path, "test_payload");
 
         assert_eq!(
             result.unwrap(),
-            Url::parse(&server.url())
-                .unwrap()
-                .join(
-                    format!("/mvp/users/{}/repos/{}/{}", user_id, repo_name, folder_path).as_str()
-                )
+            client
+                .get_url_path(&user_id, repo_name, Some(folder_path))
                 .unwrap()
         );
         assert_eq!(client.homeservers_cache.len(), 1);
         assert_eq!(
-            client
-                .homeservers_cache
-                .get(&user_id)
-                .unwrap()
-                .homeserver_url,
-            Some(Url::parse(&server.url()).unwrap())
+            client.get_home_server_url(&user_id).unwrap(),
+            homeserver_url
         );
         assert_eq!(
-            client.homeservers_cache.get(&user_id).unwrap().session_id,
-            Some("create_folder".to_string())
+            client.get_current_session(&user_id).unwrap(),
+            "create_folder".to_string()
         );
+
+        server.reset();
     }
 
     #[test]
     fn test_client_get() {
         let testnet = Testnet::new(10);
 
-        let seed = b"it is a seed for key generation!";
-        let key_pair: Keypair = DeterministicKeyGen::generate(Some(seed));
-        let user_id = key_pair.to_z32();
+        let seed = generate_seed();
+        let user_id = get_user_id(Some(&seed));
 
         let repo_name = "test_repo";
         let folder_path = "test_path";
         let data = "test_payload";
 
-        let server = create_homeserver_mock(
+        let (mut server, homeserver_url) = create_homeserver_mock(
             user_id.to_string(),
             repo_name.to_string(),
             folder_path.to_string(),
             data.to_string(),
         );
-
-        let _ = publish_url(
-            &key_pair,
-            &Url::parse(&server.url()).unwrap(),
-            &testnet.bootstrap,
-        );
-
-        let mut client = Client::new(Some(*seed), None, None, Some(&testnet.bootstrap));
+        let mut client = Client::new(Some(testnet.bootstrap));
+        let user_id = client.login(seed, Some(homeserver_url.clone())).unwrap();
 
         let result = client.get(&user_id, repo_name, folder_path);
 
         assert_eq!(result.unwrap(), data.to_string());
         assert_eq!(client.homeservers_cache.len(), 1);
         assert_eq!(
-            client
-                .homeservers_cache
-                .get(&user_id)
-                .unwrap()
-                .homeserver_url,
-            Some(Url::parse(&server.url()).unwrap())
+            client.get_home_server_url(&user_id).unwrap(),
+            homeserver_url
         );
         assert_eq!(
-            client.homeservers_cache.get(&user_id).unwrap().session_id,
-            Some("get_data".to_string())
+            client.get_current_session(&user_id).unwrap(),
+            "get_data".to_string()
         );
+
+        server.reset();
     }
 
     #[test]
     fn test_client_delete() {
         let testnet = Testnet::new(10);
 
-        let seed = b"it is a seed for key generation!";
-        let key_pair: Keypair = DeterministicKeyGen::generate(Some(seed));
-        let user_id = key_pair.to_z32();
+        let seed = generate_seed();
+        let user_id = get_user_id(Some(&seed));
         let repo_name = "test_repo";
         let folder_path = "test_path";
 
-        let server = create_homeserver_mock(
+        let (mut server, homeserver_url) = create_homeserver_mock(
             user_id.to_string(),
             repo_name.to_string(),
             folder_path.to_string(),
             "data".to_string(),
         );
-
-        let _ = publish_url(
-            &key_pair,
-            &Url::parse(&server.url()).unwrap(),
-            &testnet.bootstrap,
-        );
-
-        let mut client = Client::new(Some(*seed), None, None, Some(&testnet.bootstrap));
+        let mut client = Client::new(Some(testnet.bootstrap));
+        let user_id = client.login(seed, Some(homeserver_url.clone())).unwrap();
 
         let result = client.delete(&user_id, repo_name, folder_path);
 
         assert!(result.is_ok());
         assert_eq!(client.homeservers_cache.len(), 1);
         assert_eq!(
-            client
-                .homeservers_cache
-                .get(&user_id)
-                .unwrap()
-                .homeserver_url,
-            Some(Url::parse(&server.url()).unwrap())
+            client.get_home_server_url(&user_id).unwrap(),
+            homeserver_url
         );
         assert_eq!(
-            client.homeservers_cache.get(&user_id).unwrap().session_id,
-            Some("delete_data".to_string())
+            client.get_current_session(&user_id).unwrap(),
+            "delete_data".to_string()
         );
+
+        server.reset();
     }
 }

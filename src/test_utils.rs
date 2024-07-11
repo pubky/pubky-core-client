@@ -9,10 +9,10 @@ use crate::utils::now;
 pub fn publish_url<'a>(
     key_pair: &'a Keypair,
     url: &'a Url,
-    bootstrap: &'a Vec<String>,
-) -> Resolver<'a> {
-    let mut resolver = Resolver::new(None, Some(bootstrap));
-    resolver.publish(key_pair, url, None).unwrap();
+    bootstrap: Vec<String>,
+) -> Resolver {
+    let mut resolver = Resolver::new(Some(bootstrap));
+    resolver.publish(key_pair, url).unwrap();
 
     resolver
 }
@@ -25,7 +25,7 @@ pub struct HttpMockParams<'a> {
     pub headers: Vec<(&'a str, &'a str)>,
 }
 
-pub fn create_server(params: Vec<HttpMockParams>) -> mockito::ServerGuard {
+pub fn create_server(params: Vec<HttpMockParams>) -> (mockito::ServerGuard, Url) {
     let mut server = mockito::Server::new();
 
     for param in params {
@@ -38,7 +38,9 @@ pub fn create_server(params: Vec<HttpMockParams>) -> mockito::ServerGuard {
         request.create();
     }
 
-    server
+    let homeserver_url = Url::parse(&server.url()).unwrap();
+
+    (server, homeserver_url)
 }
 
 pub fn create_homeserver_mock(
@@ -46,7 +48,7 @@ pub fn create_homeserver_mock(
     repo_name: String,
     folder_path: String,
     data: String,
-) -> mockito::ServerGuard {
+) -> (mockito::ServerGuard, Url) {
     let challenge = Challenge::create(now() + 1000, None);
 
     // AUTH

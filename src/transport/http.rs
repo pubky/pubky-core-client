@@ -4,8 +4,20 @@ pub use reqwest::header::HeaderMap;
 pub use reqwest::Method;
 pub use reqwest::Url;
 
-// Have a hashmap homeserverUrl -> session_id
-// Q: how to clean it? -> delete manually
+/// Request method helper that sends a request to the given URL with the given method, headers, and body.
+/// It also updates the session_id if a new one is received.
+///
+/// # Arguments
+/// * `method` - The HTTP method to use.
+/// * `path` - The URL to send the request to.
+/// * `session_id` - The session_id to use for the request.
+/// * `headers` - The headers to use for the request.
+/// * `body` - The body to use for the request.
+/// # Returns
+/// * `Result<String, Error>` - The response body if the request was successful, or an error otherwise.
+/// # Errors
+/// * `Error::RequestFailed` - If the request failed.
+/// * `Error::ResponseParseFailed` - If the response could not be parsed.
 pub fn request(
     method: Method,
     path: Url,
@@ -13,7 +25,6 @@ pub fn request(
     headers: Option<&HeaderMap>,
     body: Option<String>,
 ) -> Result<String, Error> {
-    // TODO: consider moving somewhere outside?
     let client = Client::new();
     let mut request_builder = client.request(method, path);
 
@@ -36,7 +47,10 @@ pub fn request(
             if let Some(s_id) = found_session_id {
                 *session_id = Some(s_id.value().to_string());
             }
-            Ok(res.text().unwrap())
+            match res.text() {
+                Ok(text) => Ok(text),
+                Err(_) => Err(Error::ResponseParseFailed),
+            }
         }
         Err(err) => Err(Error::RequestFailed(err.to_string())),
     }
@@ -56,12 +70,12 @@ mod tests {
             body: &b"test".to_vec(),
             headers: vec![("Set-Cookie", "sessionId=123")],
         };
-        let server = test_utils::create_server(vec![dummy_test_mock_params]);
+        let (mut server, url) = test_utils::create_server(vec![dummy_test_mock_params]);
 
         let mut session_id = None;
         let headers = HeaderMap::new();
         let body = None;
-        let path = Url::parse(&format!("{}/test", server.url())).unwrap();
+        let path = url.join("/test").unwrap();
 
         let res = request(Method::GET, path, &mut session_id, Some(&headers), body);
 
@@ -69,5 +83,7 @@ mod tests {
         assert!(session_id.is_some());
         assert_eq!(session_id.unwrap(), "123");
         assert_eq!(res.unwrap(), "test");
+
+        server.reset();
     }
 }
